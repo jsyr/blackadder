@@ -1,0 +1,7 @@
+#!/bin/bash
+destination=$1
+for line in `cat testbed_nodes`
+do
+	ssh $line 'cd' $destination'/click && sudo make uninstall && sudo make clean && sudo make distclean' &
+done
+wait

@@ -1,0 +1,7 @@
+#!/bin/bash
+path=$1
+for line in `cat testbed_nodes`
+do
+	ssh $line "hostname && cd $path && make clean" &
+done
+wait

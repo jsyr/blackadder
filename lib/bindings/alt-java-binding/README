@@ -1,0 +1,27 @@
+Java wrapper for Blackadder v0.21
+
+This is a Java wrapper that wraps the Blackadder v0.2.1 C++ Library.
+Both blocking and non-blocking API are supported.
+
+== How to install ==
+1. Build native code
+Depending on which platform you will be using this wrapper library on, here are two options.
+
+a. With OpenJDK
+	1. $ cd jni
+	2. $ make
+	
+b. With Android
+	1. Copy all sub-folders of the 'jni' folder into the 'jni' folder of your Android project
+	2. In Eclipse, reference this 'BlackadderJNIWrapper' project in your Android project
+	3. NDK_MODULE_PATH=jni ndk-build
+
+2. Write Java code and use the wrapper
+
+
+TODO (MemoryOptimisation):
+- Optimise the publishDirect methods, reduce numbre of direct ByteBuffer allocation by reusing them (becuase allocatDirect() is slow)
+- Have a ByteBufferPool managed by native code
+	- ByteBufferPool.getByteBuffer();   // get available ByteBuffer from 
+- Change the async sending code in JNI, return submitted ByteBuffer back to ByteBufferPool
+- possible memory leak in BAWrapperShared native code (consider to do string/hex conversion in Java to reduce JNI call overhead)

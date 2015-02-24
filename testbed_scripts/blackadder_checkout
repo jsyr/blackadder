@@ -1,0 +1,7 @@
+#!/bin/bash
+destination=$1
+for line in `cat testbed_nodes`
+do
+	ssh $line 'hostname && svn --username  10parisi co https://vcs.hiit.fi/svn/pursuit/src/blackadder/ $destination'
+done
+wait

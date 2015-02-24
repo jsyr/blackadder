@@ -1,0 +1,6 @@
+#!/bin/bash
+for line in `cat testbed_nodes`
+do
+	ssh $line 'hostname && sudo apt-get install ant libigraph0 libigraph0-dev libconfig++8 libconfig++8-dev libssl0.9.8 libssl-dev libtool openjdk-6-jdk libtclap-dev vlc unzip  -y' &
+done
+wait

@@ -1,0 +1,7 @@
+#!/bin/bash
+destination=$1
+for line in `cat testbed_nodes`
+do
+	ssh $line 'cd' $destination'/click && ./configure --disable-linuxmodule && make && sudo make install' &
+done
+wait

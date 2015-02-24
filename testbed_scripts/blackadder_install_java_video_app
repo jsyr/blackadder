@@ -1,0 +1,19 @@
+#!/bin/bash
+destination=$1
+for line in `cat testbed_nodes`
+do
+	ssh $line 'hostname && cd' $destination'/examples/video_streaming/VideoDemoApp/lib && 
+	wget http://archive.apache.org/dist/commons/codec/binaries/commons-codec-1.5-bin.zip &&
+	unzip commons-codec-1.5-bin.zip &&
+	cd commons-codec-1.5/ &&
+	mv commons-codec-1.5.jar .. &&
+	cd .. &&
+	rm -R commons-codec-1.5 &&
+	rm commons-codec-1.5-bin.zip &&
+	wget http://java.net/projects/jna/sources/svn/content/tags/3.3.0/jnalib/dist/jna.jar &&
+	wget http://java.net/projects/jna/sources/svn/content/tags/3.3.0/jnalib/dist/platform.jar &&
+	wget http://vlcj.googlecode.com/files/vlcj-1.1.5.1.jar &&
+	cd .. &&
+	ant'
+done
+wait

@@ -1,0 +1,7 @@
+#!/bin/bash
+folder=$1
+for line in `cat testbed_nodes`
+do
+	ssh $line 'hostname && sudo rm ' $folder &
+done
+wait

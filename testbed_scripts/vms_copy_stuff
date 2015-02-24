@@ -1,0 +1,8 @@
+#!/bin/bash
+source=$1
+destination=$2
+for line in `cat testbed_nodes`
+do
+	scp -r $source $line:$destination &
+done
+wait

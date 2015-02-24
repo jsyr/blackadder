@@ -1,0 +1,15 @@
+#!/bin/bash
+destination=$1
+for line in `cat testbed_nodes`
+do
+        ssh $line 'hostname && cd' $destination'/lib/bindings/java-binding/jni/ && 
+	make clean && make && 
+	cd ../lib &&
+	wget http://archive.apache.org/dist/commons/codec/binaries/commons-codec-1.4-bin.zip &&
+	unzip commons-codec-1.4-bin.zip &&
+	cd commons-codec-1.4/ &&
+	mv commons-codec-1.4.jar .. &&
+	cd ../.. &&
+	ant'
+done
+wait
