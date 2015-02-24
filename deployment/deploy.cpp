@@ -133,8 +133,8 @@ main (int argc, char **argv)
 
   /* create an empty network representation */
   Domain dm = Domain ();
-  /* create a parser object. the configuration file and the network domain are the parameters */
 
+  /* create a parser object. the configuration file and the network domain are the parameters */
   string parserinputfile = "";
   if (autogenerate)
   {
