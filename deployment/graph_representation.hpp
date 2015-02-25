@@ -43,7 +43,7 @@ public:
      * 
      * @param _dm the network domain representation.
      */
-    GraphRepresentation(Domain *_dm, bool autogenerate);
+    GraphRepresentation(network *_dm);
     /**@brief it builds an iGraph graph using the dm.
      * 
      * @return 
@@ -95,7 +95,7 @@ public:
      * @param nn1 network vertex 1
      * @param nn2 network vertex 2
      */
-    void addGeneratedMappedConnection(NetworkNode *nn1, NetworkNode *nn2);
+    void addGeneratedMappedConnection(network_node *nn1, network_node *nn2);
     /**@brief node_index another STL map used for planetlab node indexing
      */
     map <int, string> node_index;
@@ -107,7 +107,7 @@ public:
     map <string, int> reverse_node_index;
     /**@brief the network domain as read by the provided configuration file.
      */
-    Domain *dm;
+    network *dm;
 };
 
 #endif
