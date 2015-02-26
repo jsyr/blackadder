@@ -21,7 +21,7 @@ main (int argc, char **argv)
   int ret;
 
   /* a boost bidirectional, directed graph to use throughout blackadder deployment */
-  graph network_graph;
+  network_graph network_graph;
   /* input file stream to read initial graphml configuration */
   std::ifstream in;
   /* dynamic properties to set when parsing .graphml configuration file */
@@ -78,15 +78,12 @@ main (int argc, char **argv)
     return -1;
   }
 
-  /* open the input stream for readind */
-  in.open (conf.c_str (), std::ifstream::in);
 
-  properties.property ("test_graph", boost::get (&graph_properties::test_graph, network_graph));
-  properties.property ("test_vertex", boost::get (&vertex_properties::test_vertex, network_graph));
-  properties.property ("test_edge", boost::get (&edge_properties::test_edge, network_graph));
 
   /* input .graphml file must contain a single graph definition */
   try {
+    /* open the input stream for readind */
+    in.open (conf.c_str (), std::ifstream::in);
     read_graphml (in, network_graph, properties);
   } catch (const boost::bad_parallel_edge& ex) {
     cout << "Exception:" << ex.what () << endl;
@@ -102,10 +99,10 @@ main (int argc, char **argv)
     return EXIT_FAILURE;
   }
 
-  cout << network_graph[boost::graph_bundle].test_graph << endl;
-
-  graph::vertex_descriptor v = *vertices (network_graph).first;
-  cout << network_graph[v].test_vertex << endl;
+//  cout << network_graph[boost::graph_bundle].test_graph << endl;
+//
+//  graph::vertex_descriptor v = *vertices (network_graph).first;
+//  cout << network_graph[v].test_vertex << endl;
 
 //  /* create an empty network representation */
 //  network net = network ();

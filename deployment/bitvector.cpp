@@ -22,10 +22,8 @@ Bitvector::Bitvector (string &x)
   _data = new uint32_t[x.length ()];
   _max = x.length () - 1;
   memset (_data, 0, x.length ());
-  for (i = 0; i < x.length (); i++)
-  {
-    if (x.at (i) == '1')
-    {
+  for (i = 0; i < x.length (); i++) {
+    if (x.at (i) == '1') {
       (*this)[size () - i - 1] = true;
     }
   }
@@ -53,8 +51,7 @@ Bitvector::zero () const
 {
   int nn = max_word ();
   for (int i = 0; i <= nn; i++)
-    if (_data[i])
-      return false;
+    if (_data[i]) return false;
   return true;
 }
 
@@ -63,16 +60,13 @@ Bitvector::resize_to_max (int new_max, bool valid_n)
 {
   int want_u = (new_max >> 5) + 1;
   int have_u = (valid_n ? max_word () : MAX_INLINE_WORD) + 1;
-  if (have_u < MAX_INLINE_WORD + 1)
-    have_u = MAX_INLINE_WORD + 1;
-  if (want_u <= have_u)
-    return;
+  if (have_u < MAX_INLINE_WORD + 1) have_u = MAX_INLINE_WORD + 1;
+  if (want_u <= have_u) return;
 
   uint32_t *new_data = new uint32_t[want_u];
   memcpy (new_data, _data, have_u * sizeof(uint32_t));
   memset (new_data + have_u, 0, (want_u - have_u) * sizeof(uint32_t));
-  if (_data != &_f0)
-    delete[] _data;
+  if (_data != &_f0) delete[] _data;
   _data = new_data;
 }
 
@@ -81,8 +75,7 @@ Bitvector::clear_last ()
 {
   if ((_max < 0))
     _data[0] = 0;
-  else if ((_max & 0x1F) != 0x1F)
-  {
+  else if ((_max & 0x1F) != 0x1F) {
     uint32_t mask = (1U << ((_max & 0x1F) + 1)) - 1;
     _data[_max >> 5] &= mask;
   }
@@ -91,14 +84,12 @@ Bitvector::clear_last ()
 Bitvector &
 Bitvector::operator= (const Bitvector &o)
 {
-  if (&o == this)
-    /* nada */;
-  else if (o.max_word () <= MAX_INLINE_WORD)
+  if (&o == this) {
+    /* nada */
+  } else if (o.max_word () <= MAX_INLINE_WORD)
     memcpy (_data, o._data, 8);
-  else
-  {
-    if (_data != &_f0)
-      delete[] _data;
+  else {
+    if (_data != &_f0) delete[] _data;
     _data = new uint32_t[o.max_word () + 1];
     memcpy (_data, o._data, (o.max_word () + 1) * sizeof(uint32_t));
   }
@@ -116,8 +107,7 @@ Bitvector::assign (int n, bool value)
   int copy = (n > 32 ? max_word () : 0);
   for (int i = 0; i <= copy; i++)
     _data[i] = bits;
-  if (value)
-    clear_last ();
+  if (value) clear_last ();
   return *this;
 }
 
@@ -144,8 +134,7 @@ Bitvector::operator&= (const Bitvector &o)
 Bitvector &
 Bitvector::operator|= (const Bitvector &o)
 {
-  if (o._max > _max)
-    resize (o._max + 1);
+  if (o._max > _max) resize (o._max + 1);
   int nn = max_word ();
   uint32_t *data = _data, *o_data = o._data;
   for (int i = 0; i <= nn; i++)
@@ -174,34 +163,28 @@ Bitvector::offset_or (const Bitvector &o, int offset)
   uint32_t *data = _data;
   const uint32_t *o_data = o._data;
 
-  while (true)
-  {
+  while (true) {
     uint32_t val = o_data[o_pos];
     data[my_pos] |= (val << bits_1st);
 
     my_pos++;
-    if (my_pos > my_max_word)
-      break;
+    if (my_pos > my_max_word) break;
 
-    if (bits_1st)
-      data[my_pos] |= (val >> (32 - bits_1st));
+    if (bits_1st) data[my_pos] |= (val >> (32 - bits_1st));
 
     o_pos++;
-    if (o_pos > o_max_word)
-      break;
+    if (o_pos > o_max_word) break;
   }
 }
 
 void
 Bitvector::or_with_difference (const Bitvector &o, Bitvector &diff)
 {
-  if (diff._max != _max)
-    diff.resize (_max + 1);
+  if (diff._max != _max) diff.resize (_max + 1);
   int nn = max_word ();
   uint32_t *data = _data, *diff_data = diff._data;
   const uint32_t *o_data = o._data;
-  for (int i = 0; i <= nn; i++)
-  {
+  for (int i = 0; i <= nn; i++) {
     diff_data[i] = o_data[i] & ~data[i];
     data[i] |= o_data[i];
   }
@@ -211,12 +194,10 @@ bool
 Bitvector::nonzero_intersection (const Bitvector &o) const
 {
   int nn = o.max_word ();
-  if (nn > max_word ())
-    nn = max_word ();
+  if (nn > max_word ()) nn = max_word ();
   const uint32_t *data = _data, *o_data = o._data;
   for (int i = 0; i <= nn; i++)
-    if (data[i] & o_data[i])
-      return true;
+    if (data[i] & o_data[i]) return true;
   return false;
 }
 
@@ -244,14 +225,10 @@ string
 Bitvector::to_string ()
 {
   string res;
-  for (int i = 0; i < size (); i++)
-  {
-    if (Bitvector::Bit::unspecified_bool_type ((*this)[size () - i - 1]))
-    {
+  for (int i = 0; i < size (); i++) {
+    if (Bitvector::Bit::unspecified_bool_type ((*this)[size () - i - 1])) {
       res += '1';
-    }
-    else
-    {
+    } else {
       res += '0';
     }
   }
