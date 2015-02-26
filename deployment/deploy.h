@@ -14,45 +14,15 @@
 #include <boost/program_options.hpp>
 #include <boost/graph/graphml.hpp>
 
+#include <boost/smart_ptr.hpp>
+#include <boost/property_map/dynamic_property_map.hpp>
+#include <boost/property_map/property_map.hpp>
+
 #include "network.hpp"
 #include "graph_representation.hpp"
 #include "parser.hpp"
 
-struct graph_properties
-{
-  int test_graph;
-};
-
-struct vertex_properties
-{
-  int test_vertex;
-};
-
-struct edge_properties
-{
-  int test_edge;
-};
-
 typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS> network_graph;
 
-namespace boost
-{
-  enum graph_test_t
-  {
-    graph_test1
-  };
-  enum vertex_test_t
-  {
-    vertex_test2
-  };
-  enum edge_test_t
-  {
-    edge_test3
-  };
 
-  BOOST_INSTALL_PROPERTY(graph, test);
-  BOOST_INSTALL_PROPERTY(vertex, test);
-  BOOST_INSTALL_PROPERTY(edge, test);
-
-}
 #endif /* DEPLOY_H_ */

@@ -15,6 +15,24 @@
 
 using namespace std;
 
+boost::shared_ptr<boost::dynamic_property_map>
+string2string_gen (const std::string& name, const boost::any&, const boost::any&)
+{
+
+  cout << "AAAAAAAAAAAAAAAAAAAAAA: " << name << endl;
+//
+//  typedef std::map<int, int> map_t;
+//  typedef boost::associative_property_map<std::map<int, int> > property_t;
+//
+//  map_t* mymap = new map_t (); // hint: leaky memory here!
+//
+//  property_t property_map (*mymap);
+
+  boost::shared_ptr<boost::dynamic_property_map> pm;// (new boost::detail::dynamic_property_map_adaptor<property_t> (property_map));
+
+  return pm;
+}
+
 int
 main (int argc, char **argv)
 {
@@ -25,7 +43,7 @@ main (int argc, char **argv)
   /* input file stream to read initial graphml configuration */
   std::ifstream in;
   /* dynamic properties to set when parsing .graphml configuration file */
-  boost::dynamic_properties properties;
+  boost::dynamic_properties properties (&string2string_gen);
 
   /* name of configuration file */
   string conf;
@@ -78,8 +96,6 @@ main (int argc, char **argv)
     return -1;
   }
 
-
-
   /* input .graphml file must contain a single graph definition */
   try {
     /* open the input stream for readind */
@@ -99,29 +115,15 @@ main (int argc, char **argv)
     return EXIT_FAILURE;
   }
 
-//  cout << network_graph[boost::graph_bundle].test_graph << endl;
+//  // build property maps using associative_property_map
+//  std::map<string, string> name2age;
+//  boost::associative_property_map<std::map<string, string> > age_map (name2age);
 //
-//  graph::vertex_descriptor v = *vertices (network_graph).first;
-//  cout << network_graph[v].test_vertex << endl;
+//  // build and populate dynamic interface
+//  properties.property ("my_name", age_map);
+//
+//  cout << (boost::get (age_map, "my_name")) << endl;
 
-//  /* create an empty network representation */
-//  network net = network ();
-//
-//  /* create a parser object */
-//  parser parser (((char *) conf.c_str ()), &net);
-//
-//  if (!simulation) ret = parser.build_network ();
-////  else
-////    ret = parser.build_ns3_network ();
-//
-//  /* check for errors */
-//  if (ret < 0) {
-//    cout << "Something went wrong: " << ret << endl;
-//    return EXIT_FAILURE;
-//  }
-
-//
-//
 //  /* create a graph representation of the network domain */
 //  GraphRepresentation graph = GraphRepresentation (&dm);
 //
