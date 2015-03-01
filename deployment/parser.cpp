@@ -1,115 +1,80 @@
-/*
- * Copyright (C) 2010-2011  George Parisis and Dirk Trossen
- * All rights reserved.
- *
- * PlanetLab Deployment support By Dimitris Syrivelis
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License version
- * 2 as published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of
- * the BSD license.
- *
- * See LICENSE and COPYING for more details.
- */
-
-#include "parser.hpp"
-
-parser::parser (char *file, network *net)
-{
-  this->file = file;
-  this->net = net;
-}
-
-parser::~parser ()
-{
-}
-
-int
-parser::parse_configuration ()
-{
-  try {
-    cfg.readFile (file);
-    return 0;
-  } catch (const FileIOException &fioex) {
-    std::cerr << "I/O error while reading file." << std::endl;
-    return -1;
-  } catch (const ParseException &pex) {
-    std::cerr << "Parse error while reading file. " << std::endl;
-    return -1;
-  }
-}
-
-int
-parser::build_network ()
-{
-  int ret;
-  ret = parse_configuration ();
-  if (ret < 0) {
-    cerr << "could not read configuration file " << file << endl;
-    return ret;
-  }
-  ret = get_global_network_params ();
-  if (ret < 0) {
-    cerr << "could not get global parameters from " << file << endl;
-    return ret;
-  }
-
+///*
+// * Copyright (C) 2010-2011  George Parisis and Dirk Trossen
+// * All rights reserved.
+// *
+// * PlanetLab Deployment support By Dimitris Syrivelis
+// * This program is free software; you can redistribute it and/or
+// * modify it under the terms of the GNU General Public License version
+// * 2 as published by the Free Software Foundation.
+// *
+// * Alternatively, this software may be distributed under the terms of
+// * the BSD license.
+// *
+// * See LICENSE and COPYING for more details.
+// */
+//
+//#include "parser.hpp"
+//
+//parser::parser (char *file, network *net)
+//{
+//  this->file = file;
+//  this->net = net;
+//}
+//
+//parser::~parser ()
+//{
+//}
+//
+//int
+//parser::parse_configuration ()
+//{
+//  try {
+//    cfg.readFile (file);
+//    return 0;
+//  } catch (const FileIOException &fioex) {
+//    std::cerr << "I/O error while reading file." << std::endl;
+//    return -1;
+//  } catch (const ParseException &pex) {
+//    std::cerr << "Parse error while reading file. " << std::endl;
+//    return -1;
+//  }
+//}
+//
+//int
+//parser::build_network ()
+//{
+//  int ret;
+//  ret = parse_configuration ();
+//  if (ret < 0) {
+//    cerr << "could not read configuration file " << file << endl;
+//    return ret;
+//  }
+//  ret = get_global_network_params ();
+//  if (ret < 0) {
+//    cerr << "could not get global parameters from " << file << endl;
+//    return ret;
+//  }
+//
 //  const Setting& root = cfg.getRoot ();
 //
-//  if (net->overlay_mode.compare ("mac_ml") != 0) {
-//    try {
-//      const Setting &nodes = root["network"]["nodes"];
-//      net->number_of_nodes = nodes.getLength ();
-//      cout << "Number of nodes in the topology: " << net->number_of_nodes << endl;
-//      for (unsigned int node_counter = 0; node_counter < net->number_of_nodes; ++node_counter) {
-//	const Setting &node = nodes[node_counter];
-//	ret = add_node (node);
-//	if (ret < 0) {
-//	  return -1;
-//	}
+//  try {
+//    const Setting &nodes = root["network"]["nodes"];
+//    net->number_of_nodes = nodes.getLength ();
+//    cout << "Number of nodes in the topology: " << net->number_of_nodes << endl;
+//    for (unsigned int node_counter = 0; node_counter < net->number_of_nodes; ++node_counter) {
+//      const Setting &node = nodes[node_counter];
+//      ret = add_node (node);
+//      if (ret < 0) {
+//	return -1;
 //      }
-//    } catch (const SettingNotFoundException &nfex) {
-//      return -1;
-//      cerr << "SettingNotFoundException" << endl;
 //    }
-//  } else {
-//    // Parse a multilayer configuration file
-//    try {
-//      const Setting &ol_nodes = root["network"]["ol_nodes"];
-//      const Setting &pl_nodes = root["network"]["pl_nodes"];
-//      net->number_of_pl_nodes = pl_nodes.getLength ();
-//      net->number_of_nodes = ol_nodes.getLength () + pl_nodes.getLength ();
-//      int number_of_ol_nodes = net->number_of_nodes - net->number_of_pl_nodes;
-//
-//      //here we need to add dm->number_of_en_nodes = el_nodes.getLength()
-//
-//      cout << "Number of nodes in the topology: " << net->number_of_nodes << endl;
-//      cout << "Number of Electronic nodes in the topology: " << pl_nodes.getLength () << endl;
-//      for (int node_counter = 0; node_counter < number_of_ol_nodes; ++node_counter) {
-//	const Setting &ol_node = ol_nodes[node_counter];
-//	ret = add_node (ol_node);
-//	cout << "parser ret is :" << ret << endl;
-//	if (ret < 0) {
-//	  return -1;
-//	}
-//      }
-//      for (unsigned int node_counter = 0; node_counter < net->number_of_pl_nodes; ++node_counter) {
-//	const Setting &pl_node = pl_nodes[node_counter];
-//	ret = add_node (pl_node);
-//	cout << "parser ret is :" << ret << endl;
-//	if (ret < 0) {
-//	  return -1;
-//	}
-//      }
-//    } catch (const SettingNotFoundException &nfex) {
-//      cerr << "SettingNotFoundException" << endl;
-//      return 0;			// XXX: this should go back to -1 not 0
-//    }
+//  } catch (const SettingNotFoundException &nfex) {
+//    return -1;
+//    cerr << "SettingNotFoundException" << endl;
 //  }
-  return 0;
-}
-
+//  return 0;
+//}
+//
 //int
 //parser::build_ns3_network ()
 //{
@@ -142,77 +107,77 @@ parser::build_network ()
 //  }
 //  return 0;
 //}
-
-int
-parser::get_global_network_params ()
-{
-  try {
-    net->ba_id_len = cfg.lookup ("BLACKADDER_ID_LENGTH");
-  } catch (const SettingNotFoundException &nfex) {
-    cerr << "mandatory option BLACKADDER_ID_LENGTH is missing" << endl;
-    return -1;
-  }
-  try {
-    net->fid_len = cfg.lookup ("LIPSIN_ID_LENGTH");
-  } catch (const SettingNotFoundException &nfex) {
-    cerr << "mandatory option LIPSIN_ID_LENGTH is missing" << endl;
-    return -1;
-  }
-  try {
-    cfg.lookupValue ("CLICK_HOME", net->click_home);
-    if (net->click_home[net->click_home.length () - 1] != '/') {
-      net->click_home.append ("/"); /* XXX: default separator assumed */
-    }
-    cout << "Click Home: " << net->click_home << endl;
-  } catch (const SettingNotFoundException &nfex) {
-    cerr << "mandatory option CLICK_HOME is missing" << endl;
-    return -1;
-  }
-  try {
-    cfg.lookupValue ("WRITE_CONF", net->write_conf);
-    if (net->write_conf[net->write_conf.length () - 1] != '/') {
-      net->write_conf.append ("/"); /* XXX: default separator assumed */
-    }
-    if (net->write_conf.find_first_of ('\"') != string::npos) {
-      /* XXX: this is only a very basic sanity check */
-      cerr << "bad write_conf string" << endl;
-      return -1;
-    }
-    string dir_exists_cmd = "/usr/bin/env test -d \"" + net->write_conf + "\"";
-    int dir_exists = system (dir_exists_cmd.c_str ());
-    if (dir_exists != 0) {
-      cerr << "output directory " << net->write_conf << " doesn't exist or is not a directory" << endl;
-      return -1;
-    }
-    cout << "Write conf files in: " << net->write_conf << endl;
-  } catch (const SettingNotFoundException &nfex) {
-    cerr << "mandatory option WRITE_CONF is missing" << endl;
-    return -1;
-  }
-  try {
-    cfg.lookupValue ("USER", net->user);
-    cout << "User: " << net->user << endl;
-  } catch (const SettingNotFoundException &nfex) {
-    cerr << "mandatory option USER is missing" << endl;
-    return -1;
-  }
-  try {
-    cfg.lookupValue ("SUDO", net->sudo);
-    cout << "Sudo: " << net->sudo << endl;
-  } catch (const SettingNotFoundException &nfex) {
-    cerr << "mandatory option SUDO is missing" << endl;
-    return -1;
-  }
-  try {
-    cfg.lookupValue ("OVERLAY_MODE", net->overlay_mode);
-    cout << "OVERLAY_MODE: " << net->overlay_mode << endl;
-  } catch (const SettingNotFoundException &nfex) {
-    cerr << "mandatory option OVERLAY_MODE is missing" << endl;
-    return -1;
-  }
-  return 0;
-}
-
+//
+//int
+//parser::get_global_network_params ()
+//{
+//  try {
+//    net->ba_id_len = cfg.lookup ("BLACKADDER_ID_LENGTH");
+//  } catch (const SettingNotFoundException &nfex) {
+//    cerr << "mandatory option BLACKADDER_ID_LENGTH is missing" << endl;
+//    return -1;
+//  }
+//  try {
+//    net->fid_len = cfg.lookup ("LIPSIN_ID_LENGTH");
+//  } catch (const SettingNotFoundException &nfex) {
+//    cerr << "mandatory option LIPSIN_ID_LENGTH is missing" << endl;
+//    return -1;
+//  }
+//  try {
+//    cfg.lookupValue ("CLICK_HOME", net->click_home);
+//    if (net->click_home[net->click_home.length () - 1] != '/') {
+//      net->click_home.append ("/"); /* XXX: default separator assumed */
+//    }
+//    cout << "Click Home: " << net->click_home << endl;
+//  } catch (const SettingNotFoundException &nfex) {
+//    cerr << "mandatory option CLICK_HOME is missing" << endl;
+//    return -1;
+//  }
+//  try {
+//    cfg.lookupValue ("WRITE_CONF", net->write_conf);
+//    if (net->write_conf[net->write_conf.length () - 1] != '/') {
+//      net->write_conf.append ("/"); /* XXX: default separator assumed */
+//    }
+//    if (net->write_conf.find_first_of ('\"') != string::npos) {
+//      /* XXX: this is only a very basic sanity check */
+//      cerr << "bad write_conf string" << endl;
+//      return -1;
+//    }
+//    string dir_exists_cmd = "/usr/bin/env test -d \"" + net->write_conf + "\"";
+//    int dir_exists = system (dir_exists_cmd.c_str ());
+//    if (dir_exists != 0) {
+//      cerr << "output directory " << net->write_conf << " doesn't exist or is not a directory" << endl;
+//      return -1;
+//    }
+//    cout << "Write conf files in: " << net->write_conf << endl;
+//  } catch (const SettingNotFoundException &nfex) {
+//    cerr << "mandatory option WRITE_CONF is missing" << endl;
+//    return -1;
+//  }
+//  try {
+//    cfg.lookupValue ("USER", net->user);
+//    cout << "User: " << net->user << endl;
+//  } catch (const SettingNotFoundException &nfex) {
+//    cerr << "mandatory option USER is missing" << endl;
+//    return -1;
+//  }
+//  try {
+//    cfg.lookupValue ("SUDO", net->sudo);
+//    cout << "Sudo: " << net->sudo << endl;
+//  } catch (const SettingNotFoundException &nfex) {
+//    cerr << "mandatory option SUDO is missing" << endl;
+//    return -1;
+//  }
+//  try {
+//    cfg.lookupValue ("OVERLAY_MODE", net->overlay_mode);
+//    cout << "OVERLAY_MODE: " << net->overlay_mode << endl;
+//  } catch (const SettingNotFoundException &nfex) {
+//    cerr << "mandatory option OVERLAY_MODE is missing" << endl;
+//    return -1;
+//  }
+//  return 0;
+//}
+//
 //int
 //parser::get_global_ns3_network_params ()
 //{
@@ -236,7 +201,7 @@ parser::get_global_network_params ()
 //  }
 //  return 0;
 //}
-
+//
 //int
 //parser::add_connection (const Setting &connection, network_node *nn)
 //{
@@ -267,20 +232,11 @@ parser::get_global_network_params ()
 //
 //  /***********Parse the connection type****************/
 //  /***Parse the src_if or src_ip or out_pt depending on mode****/
-//  if (net->overlay_mode.compare ("mac") == 0 || net->overlay_mode.compare ("mac_qos") == 0) {
+//  if (net->overlay_mode.compare ("mac") == 0) {
 //    if (connection.lookupValue ("src_if", src_if)) {
 //      nc->src_if = src_if;
 //    } else {
 //      cout << "missing mandatory src_if parameter for connection of node " << nn->label << endl;
-//      return -1;
-//    }
-//  } else if (net->overlay_mode.compare ("mac_ml") == 0) {
-//    if (connection.lookupValue ("out_pt", out_pt)) {
-//      nc->out_pt = out_pt;
-//    } else if (connection.lookupValue ("src_if", src_if)) {
-//      nc->src_if = src_if;
-//    } else {
-//      cout << "missing mandatory in_pt or src_if parameter for connection of node " << nn->label << endl;
 //      return -1;
 //    }
 //  } else {
@@ -292,20 +248,12 @@ parser::get_global_network_params ()
 //    }
 //  }
 //  /***Parse the dst_if or dst_ip depending on mode****/
-//  if (net->overlay_mode.compare ("mac") == 0 || net->overlay_mode.compare ("mac_qos") == 0) {
+//  if (net->overlay_mode.compare ("mac") == 0) {
 //    if (connection.lookupValue ("dst_if", dst_if)) {
 //      nc->dst_if = dst_if;
 //    } else {
 //      cout << "missing mandatory dst_if parameter for connection of node " << nn->label << endl;
 //      return -1;
-//    }
-//  } else if (net->overlay_mode.compare ("mac_ml") == 0) {
-//    if (connection.lookupValue ("in_pt", in_pt)) {
-//      nc->in_pt = in_pt;
-//    } else {
-//      if (connection.lookupValue ("dst_if", dst_if)) {
-//	nc->dst_if = dst_if;
-//      }
 //    }
 //  } else {
 //    if (connection.lookupValue ("dst_ip", dst_ip)) {
@@ -316,7 +264,7 @@ parser::get_global_network_params ()
 //    }
 //  }
 //  /*check if a mac address was hardcoded - e.g. for laptops in the testbed*/
-//  if (net->overlay_mode.compare ("mac") == 0 || net->overlay_mode.compare ("mac_qos") == 0) {
+//  if (net->overlay_mode.compare ("mac") == 0) {
 //    if (connection.lookupValue ("src_mac", src_mac)) {
 //      nc->src_mac = src_mac;
 //    }
@@ -324,33 +272,6 @@ parser::get_global_network_params ()
 //      nc->dst_mac = dst_mac;
 //    }
 //  }
-//  /*set the type of the link according to the connection ends: pure overlay layer "oo", pure packet layer "pp", or cross layer "cl"*/
-//  if (net->overlay_mode.compare ("mac_ml") == 0) {
-//    //adding the type parameter to the link
-//    if (((nc->src_if != "") && (nc->dst_if != "")) || ((nc->src_mac != "") && (nc->dst_mac != ""))) {
-//      nc->lnk_type = "pp";
-//      net->number_of_p_connections++;
-//    } else if ((nc->out_pt != "") && (nc->in_pt != "")) {
-//      nc->lnk_type = "oo";
-//    } else {
-//      nc->lnk_type = "cl";
-//    }
-//    // check if a mac address was hardcoded
-//    if (connection.lookupValue ("src_mac", src_mac)) {
-//      nc->src_mac = src_mac;
-//    }
-//    if (connection.lookupValue ("dst_mac", dst_mac)) {
-//      nc->dst_mac = dst_mac;
-//    }
-//  }
-//
-//  // get the link priority for scheduling
-//  nc->priority = 0; // default - BE
-//  connection.lookupValue ("priority", nc->priority);
-//
-//  // get link rate limit
-//  nc->rate_lim = 1250000000;
-//  connection.lookupValue ("rate_lim", nc->rate_lim);
 //
 //  nn->connections.push_back (nc);
 //  net->number_of_connections++;
@@ -449,9 +370,6 @@ parser::get_global_network_params ()
 //      return -1;
 //    } else {
 //      nn->label = node_label;
-//      if (node.lookupValue ("type", node_type)) {
-//	nn->type = node_type;
-//      }
 //    }
 //  }
 //  /*********************Parse the IP (for ssh'ing in the testbed only!!)**************************/
@@ -549,12 +467,10 @@ parser::get_global_network_params ()
 //    const Setting &connections = node["connections"];
 //    int number_of_connections = connections.getLength ();
 //    if (number_of_connections > 0) {
-//// 	    cout << "addNode: number_of_connections is: "<< number_of_connections << endl;
 //      for (int connections_counter = 0; connections_counter < number_of_connections; connections_counter++) {
 //	const Setting &connection = connections[connections_counter];
 //	ret = add_connection (connection, nn);
 //	if (ret < 0) {
-////		    cout << "addConnection: ret is: "<< ret << endl;
 //	  return -1;
 //	}
 //      }

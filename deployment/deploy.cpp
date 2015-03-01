@@ -15,45 +15,179 @@
 
 using namespace std;
 
-boost::shared_ptr<boost::dynamic_property_map>
-string2string_gen (const std::string& name, const boost::any&, const boost::any&)
+void
+network::load_network (const string &filename)
+{
+  // Create an empty property tree object
+  using boost::property_tree::ptree;
+  ptree pt;
+
+  // Load the XML file into the property tree. If reading fails
+  // (cannot open file, parse error), an exception is thrown.
+  read_xml (filename, pt);
+
+  /* parse network parameters */
+  try {
+    info_id_len = pt.get<int> ("network.info_id_len");
+    link_id_len = pt.get<int> ("network.link_id_len");
+    is_simulation = pt.get<int> ("network.is_simulation", false);
+  } catch (boost::property_tree::ptree_bad_data& err) {
+    cerr << err.what () << endl;
+    exit (EXIT_FAILURE);
+  } catch (boost::property_tree::ptree_bad_path& err) {
+    cerr << err.what () << endl;
+    exit (EXIT_FAILURE);
+  }
+
+  cout << "info_id_len:   " << info_id_len << endl;
+  cout << "link_id_len:   " << link_id_len << endl;
+  cout << "is_simulation: " << is_simulation << endl;
+
+  try {
+    BOOST_FOREACH (ptree::value_type & v, pt.get_child ("network.nodes")) {
+      node n;
+      n.load_node (v.second);
+      nodes.insert (pair<string, struct node> (n.label, n));
+    }
+  } catch (boost::property_tree::ptree_bad_data& err) {
+    cerr << err.what () << endl;
+    exit (EXIT_FAILURE);
+  } catch (boost::property_tree::ptree_bad_path& err) {
+    cerr << "No nodes are defined - aborting..." << endl;
+    exit (EXIT_FAILURE);
+  }
+
+  try {
+    BOOST_FOREACH (ptree::value_type & v, pt.get_child ("network.connections")) {
+      connection c;
+      c.load_connection (v.second);
+      connections.push_back (c);
+    }
+  } catch (boost::property_tree::ptree_bad_data& err) {
+    cerr << err.what () << endl;
+    exit (EXIT_FAILURE);
+  } catch (boost::property_tree::ptree_bad_path& err) {
+    cerr << "No connections are defined " << endl;
+  }
+
+  if (is_simulation) {
+    try {
+      BOOST_FOREACH (ptree::value_type & v, pt.get_child ("network.applications")) {
+	ns3_application a;
+	a.load_ns3_application (v.second);
+	ns3_applications.push_back (a);
+      }
+    } catch (boost::property_tree::ptree_bad_data& err) {
+      cerr << err.what () << endl;
+      exit (EXIT_FAILURE);
+    } catch (boost::property_tree::ptree_bad_path& err) {
+      cerr << "No ns-3 applications are defined " << endl;
+      exit (EXIT_FAILURE);
+    }
+  }
+}
+
+void
+node::load_node (const boost::property_tree::ptree &pt)
+{
+  try {
+    /* mandatory */
+    label = pt.get<string> ("label");
+    testbed_ip = pt.get<string> ("testbed_ip");
+    user = pt.get<string> ("user");
+
+    /* optional - with default values */
+    sudo = pt.get<bool> ("sudo", false);
+    click_home = pt.get<string> ("click_home", "/home/" + user + "/click");
+    conf_home = pt.get<string> ("conf_home", "/home/" + user + "/conf");
+    running_mode = pt.get<string> ("running_mode", "user");
+    operating_system = pt.get<string> ("operating_system", "linux");
+    is_rv = pt.get<bool> ("is_rv", false);
+    is_tm = pt.get<bool> ("is_tm", false);
+
+  } catch (boost::property_tree::ptree_bad_data& err) {
+    cerr << err.what () << endl;
+    exit (EXIT_FAILURE);
+  } catch (boost::property_tree::ptree_bad_path& err) {
+    cerr << "missing mandatory node parameter - " << err.what () << endl;
+    exit (EXIT_FAILURE);
+  }
+
+  cout << "label:      " << label << endl;
+  cout << "testbed_ip: " << testbed_ip << endl;
+  cout << "user:       " << user << endl;
+
+  cout << "click_home: " << click_home << endl;
+  cout << "conf_home:  " << conf_home << endl;
+  cout << "sudo:       " << sudo << endl;
+  cout << "mode:       " << running_mode << endl;
+  cout << "os:         " << operating_system << endl;
+}
+
+void
+connection::load_connection (const boost::property_tree::ptree &pt)
+{
+  try {
+    /* mandatory */
+    src_label = pt.get<string> ("src_label");
+    dst_label = pt.get<string> ("dst_label");
+
+    /* optional - with default values */
+    overlay_mode = pt.get<string> ("overlay_mode", "Ethernet");
+
+    src_if = pt.get<string> ("src_if", "unspecified");
+    dst_if = pt.get<string> ("dst_if", "unspecified");
+
+    src_mac = pt.get<string> ("src_mac", "unspecified");
+    dst_mac = pt.get<string> ("dst_mac", "unspecified");
+
+    src_ip = pt.get<string> ("src_ip", "unspecified");
+    dst_ip = pt.get<string> ("dst_ip", "unspecified");
+
+  } catch (boost::property_tree::ptree_bad_data& err) {
+    cerr << err.what () << endl;
+    exit (EXIT_FAILURE);
+  } catch (boost::property_tree::ptree_bad_path& err) {
+    cerr << "missing mandatory connection parameter - " << err.what () << endl;
+    exit (EXIT_FAILURE);
+  }
+
+  cout << "src_label:    " << src_label << endl;
+  cout << "dst_label:    " << src_label << endl;
+
+  cout << "overlay_mode: " << overlay_mode << endl;
+  cout << "src_if:       " << src_if << endl;
+  cout << "dst_if:       " << dst_if << endl;
+  cout << "src_mac:      " << src_mac << endl;
+  cout << "dst_mac:      " << dst_mac << endl;
+  cout << "src_ip:       " << src_ip << endl;
+  cout << "dst_ip:       " << dst_ip << endl;
+}
+
+void
+ns3_application::load_ns3_application (const boost::property_tree::ptree &pt)
 {
 
-  cout << "AAAAAAAAAAAAAAAAAAAAAA: " << name << endl;
-//
-//  typedef std::map<int, int> map_t;
-//  typedef boost::associative_property_map<std::map<int, int> > property_t;
-//
-//  map_t* mymap = new map_t (); // hint: leaky memory here!
-//
-//  property_t property_map (*mymap);
-
-  boost::shared_ptr<boost::dynamic_property_map> pm;// (new boost::detail::dynamic_property_map_adaptor<property_t> (property_map));
-
-  return pm;
 }
 
 int
 main (int argc, char **argv)
 {
-  int ret;
+  /* a network struct to populate using the configuration file and boost property tree */
+  struct network network;
 
   /* a boost bidirectional, directed graph to use throughout blackadder deployment */
   network_graph network_graph;
-  /* input file stream to read initial graphml configuration */
-  std::ifstream in;
-  /* dynamic properties to set when parsing .graphml configuration file */
-  boost::dynamic_properties properties (&string2string_gen);
+
+  int ret;
 
   /* name of configuration file */
   string conf;
 
-  bool simulation = false;
   bool enable_dump = false;
   bool no_discover = false;
   bool no_copy = false;
   bool no_start = false;
-
   bool monitor = false;
 
   boost::program_options::variables_map vm;
@@ -63,7 +197,6 @@ main (int argc, char **argv)
 
   desc.add_options () ("conf,c", boost::program_options::value<string> (&conf)->required (), "Configuration file (mandatory)");
 
-  desc.add_options () ("simulation", "Output ns-3 simulation code");
   desc.add_options () ("enable_dump", "Enable RV info dump support");
   desc.add_options () ("no-discover", "Don't auto-discover MAC addresses");
   desc.add_options () ("no-copy", "Don't copy Click configuration files to remote nodes");
@@ -77,8 +210,6 @@ main (int argc, char **argv)
 
     if (vm.count ("help")) cout << desc << endl;
 
-    if (vm.count ("simulation")) simulation = true;
-
     if (vm.count ("enable_dump")) enable_dump = true;
 
     if (vm.count ("no_discover")) no_discover = true;
@@ -91,38 +222,11 @@ main (int argc, char **argv)
 
     boost::program_options::notify (vm);
   } catch (boost::program_options::error& e) {
-    cerr << "ERROR: " << e.what () << endl;
-    cerr << desc << endl;
-    return -1;
-  }
-
-  /* input .graphml file must contain a single graph definition */
-  try {
-    /* open the input stream for readind */
-    in.open (conf.c_str (), std::ifstream::in);
-    read_graphml (in, network_graph, properties);
-  } catch (const boost::bad_parallel_edge& ex) {
-    cout << "Exception:" << ex.what () << endl;
-    return EXIT_FAILURE;
-  } catch (const boost::directed_graph_error& ex) {
-    cout << "Exception:" << ex.what () << endl;
-    return EXIT_FAILURE;
-  } catch (const boost::undirected_graph_error& ex) {
-    cout << "Exception:" << ex.what () << endl;
-    return EXIT_FAILURE;
-  } catch (const boost::parse_error& ex) {
-    cout << "Exception:" << ex.what () << endl;
+    cerr << "ERROR: " << e.what () << desc << endl;
     return EXIT_FAILURE;
   }
 
-//  // build property maps using associative_property_map
-//  std::map<string, string> name2age;
-//  boost::associative_property_map<std::map<string, string> > age_map (name2age);
-//
-//  // build and populate dynamic interface
-//  properties.property ("my_name", age_map);
-//
-//  cout << (boost::get (age_map, "my_name")) << endl;
+  network.load_network (conf);
 
 //  /* create a graph representation of the network domain */
 //  GraphRepresentation graph = GraphRepresentation (&dm);

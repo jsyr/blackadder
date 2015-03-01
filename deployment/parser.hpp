@@ -1,61 +1,61 @@
-/*
- * Copyright (C) 2010-2011  George Parisis and Dirk Trossen
- * All rights reserved.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License version
- * 2 as published by the Free Software Foundation.
- *
- * Alternatively, this software may be distributed under the terms of
- * the BSD license.
- *
- * See LICENSE and COPYING for more details.
- */
-
-#ifndef PARSER_HPP
-#define	PARSER_HPP
-
-#include <iostream>
-#include <iomanip>
-#include <cstdlib>
-#include <libconfig.h++>
-
-#include "network.hpp"
-
-using namespace std;
-using namespace libconfig;
-
-/**@brief (Deployment Application) A parser that parses the topology configuration file (that complies with libconfig++) and builds a custom representation of the network (see Domain).
- * 
- * it reads the configuration file, parse the global parameters, add all network nodes and connections.
- */
-class parser
-{
-public:
-  /**
-   * @brief Constructor: nothing special.
-   */
-  parser (char *file, network *net);
-  /**
-   * @brief Destructor: nothing special.
-   */
-  virtual
-  ~parser ();
-  /**
-   * @brief It parses the configuration file and creates a Config object.
-   *
-   * @return -1 if the file was not syntactically correct.
-   */
-  int
-  parse_configuration ();
-  /**
-   * @brief It builds the custom network representation.
-   *
-   * It reads the configuration file into a Config object, which is then used to read global parameters, node and connection configuration.
-   * @return -1 if any exception is caught during the execution.
-   */
-  int
-  build_network ();
+///*
+// * Copyright (C) 2010-2011  George Parisis and Dirk Trossen
+// * All rights reserved.
+// *
+// * This program is free software; you can redistribute it and/or
+// * modify it under the terms of the GNU General Public License version
+// * 2 as published by the Free Software Foundation.
+// *
+// * Alternatively, this software may be distributed under the terms of
+// * the BSD license.
+// *
+// * See LICENSE and COPYING for more details.
+// */
+//
+//#ifndef PARSER_HPP
+//#define	PARSER_HPP
+//
+//#include <iostream>
+//#include <iomanip>
+//#include <cstdlib>
+//#include <libconfig.h++>
+//
+//#include "network.h"
+//
+//using namespace std;
+//using namespace libconfig;
+//
+///**@brief (Deployment Application) A parser that parses the topology configuration file (that complies with libconfig++) and builds a custom representation of the network (see Domain).
+// *
+// * it reads the configuration file, parse the global parameters, add all network nodes and connections.
+// */
+//class parser
+//{
+//public:
+//  /**
+//   * @brief Constructor: nothing special.
+//   */
+//  parser (char *file, network *net);
+//  /**
+//   * @brief Destructor: nothing special.
+//   */
+//  virtual
+//  ~parser ();
+//  /**
+//   * @brief It parses the configuration file and creates a Config object.
+//   *
+//   * @return -1 if the file was not syntactically correct.
+//   */
+//  int
+//  parse_configuration ();
+//  /**
+//   * @brief It builds the custom network representation.
+//   *
+//   * It reads the configuration file into a Config object, which is then used to read global parameters, node and connection configuration.
+//   * @return -1 if any exception is caught during the execution.
+//   */
+//  int
+//  build_network ();
 //  /**
 //   * @brief It builds the custom network representation for an NS3 simulation - different stuff is expected in the topology description.
 //   *
@@ -64,28 +64,28 @@ public:
 //   */
 //  int
 //  build_ns3_network ();
-  /**
-   * @brief reads all mandatory global paramaters of the topology.
-   *
-   * These parameters are:
-   *
-   * BLACKADDER_ID_LENGTH: the length in bytes of an identifier fragment.
-   *
-   * LIPSIN_ID_LENGTH: the length in bytes of the LIPSIN identifiers.
-   *
-   * CLICK_HOME: the full path of the Click root folder.
-   *
-   * WRITE_CONF: the full path of the folder to which Click configuration and the Topology Manager .graphml files will be written.
-   *
-   * USER: the Linux user using which the deployment application will ssh all network nodes.
-   *
-   * SUDO: whether sudo is required for executing remote commands.
-   *
-   * OVERLAY_MODE: the overlay mode in which blackadder will run (mac or ip).
-   * @return
-   */
-  int
-  get_global_network_params ();
+//  /**
+//   * @brief reads all mandatory global paramaters of the topology.
+//   *
+//   * These parameters are:
+//   *
+//   * BLACKADDER_ID_LENGTH: the length in bytes of an identifier fragment.
+//   *
+//   * LIPSIN_ID_LENGTH: the length in bytes of the LIPSIN identifiers.
+//   *
+//   * CLICK_HOME: the full path of the Click root folder.
+//   *
+//   * WRITE_CONF: the full path of the folder to which Click configuration and the Topology Manager .graphml files will be written.
+//   *
+//   * USER: the Linux user using which the deployment application will ssh all network nodes.
+//   *
+//   * SUDO: whether sudo is required for executing remote commands.
+//   *
+//   * OVERLAY_MODE: the overlay mode in which blackadder will run (mac or ip).
+//   * @return
+//   */
+//  int
+//  get_global_network_params ();
 //  /**
 //   * @brief reads all mandatory global paramaters of the topology.
 //   *
@@ -152,11 +152,11 @@ public:
 //
 //  int
 //  add_ns3_connection (const Setting &connection, network_node *nn);
-
-private:
-  char *file;
-  Config cfg;
-  network *net;
-};
-
-#endif	/* PARSER_HPP */
+//
+//private:
+//  char *file;
+//  Config cfg;
+//  network *net;
+//};
+//
+//#endif	/* PARSER_HPP */
