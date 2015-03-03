@@ -1,24 +1,31 @@
 /*
- * Copyright (C) 2010-2011  George Parisis and Dirk Trossen
- * All rights reserved.
+ * bitvector.{cc,hh} -- generic bit vector class
+ * Eddie Kohler
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License version
- * 2 as published by the Free Software Foundation.
+ * Copyright (c) 1999-2000 Massachusetts Institute of Technology
+ * Copyright (c) 2002 International Computer Science Institute
+ * Copyright (c) 2008 Meraki, Inc.
  *
- * Alternatively, this software may be distributed under the terms of
- * the BSD license.
- *
- * See LICENSE and COPYING for more details.
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, subject to the conditions
+ * listed in the Click LICENSE file. These conditions include: you must
+ * preserve this copyright notice, and you cannot mention the copyright
+ * holders in advertising related to the Software without their permission.
+ * The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
+ * notice is a summary of the Click LICENSE file; the license in that file is
+ * legally binding.
  */
 
 #include <stdint.h>
 
-#include "bitvector.hpp"
+#include "bitvector.h"
 
-Bitvector::Bitvector (string &x)
+bitvector::bitvector (string &x)
 {
   unsigned int i = 0;
+  _f0 = 0;
+  _f1 = 0;
   _data = new uint32_t[x.length ()];
   _max = x.length () - 1;
   memset (_data, 0, x.length ());
@@ -30,7 +37,7 @@ Bitvector::Bitvector (string &x)
 }
 
 void
-Bitvector::finish_copy_constructor (const Bitvector &o)
+bitvector::finish_copy_constructor (const bitvector &o)
 {
   int nn = max_word ();
   _data = new uint32_t[nn + 1];
@@ -39,7 +46,7 @@ Bitvector::finish_copy_constructor (const Bitvector &o)
 }
 
 void
-Bitvector::clear ()
+bitvector::clear ()
 {
   int nn = max_word ();
   for (int i = 0; i <= nn; i++)
@@ -47,7 +54,7 @@ Bitvector::clear ()
 }
 
 bool
-Bitvector::zero () const
+bitvector::zero () const
 {
   int nn = max_word ();
   for (int i = 0; i <= nn; i++)
@@ -56,7 +63,7 @@ Bitvector::zero () const
 }
 
 void
-Bitvector::resize_to_max (int new_max, bool valid_n)
+bitvector::resize_to_max (int new_max, bool valid_n)
 {
   int want_u = (new_max >> 5) + 1;
   int have_u = (valid_n ? max_word () : MAX_INLINE_WORD) + 1;
@@ -71,7 +78,7 @@ Bitvector::resize_to_max (int new_max, bool valid_n)
 }
 
 void
-Bitvector::clear_last ()
+bitvector::clear_last ()
 {
   if ((_max < 0))
     _data[0] = 0;
@@ -81,8 +88,8 @@ Bitvector::clear_last ()
   }
 }
 
-Bitvector &
-Bitvector::operator= (const Bitvector &o)
+bitvector &
+bitvector::operator= (const bitvector &o)
 {
   if (&o == this) {
     /* nada */
@@ -97,8 +104,8 @@ Bitvector::operator= (const Bitvector &o)
   return *this;
 }
 
-Bitvector &
-Bitvector::assign (int n, bool value)
+bitvector &
+bitvector::assign (int n, bool value)
 {
   resize (n);
   uint32_t bits = (value ? 0xFFFFFFFFU : 0U);
@@ -112,7 +119,7 @@ Bitvector::assign (int n, bool value)
 }
 
 void
-Bitvector::negate ()
+bitvector::negate ()
 {
   int nn = max_word ();
   uint32_t *data = _data;
@@ -121,8 +128,8 @@ Bitvector::negate ()
   clear_last ();
 }
 
-Bitvector &
-Bitvector::operator&= (const Bitvector &o)
+bitvector &
+bitvector::operator&= (const bitvector &o)
 {
   int nn = max_word ();
   uint32_t *data = _data, *o_data = o._data;
@@ -131,8 +138,8 @@ Bitvector::operator&= (const Bitvector &o)
   return *this;
 }
 
-Bitvector &
-Bitvector::operator|= (const Bitvector &o)
+bitvector &
+bitvector::operator|= (const bitvector &o)
 {
   if (o._max > _max) resize (o._max + 1);
   int nn = max_word ();
@@ -142,8 +149,8 @@ Bitvector::operator|= (const Bitvector &o)
   return *this;
 }
 
-Bitvector &
-Bitvector::operator^= (const Bitvector &o)
+bitvector &
+bitvector::operator^= (const bitvector &o)
 {
   int nn = max_word ();
   uint32_t *data = _data, *o_data = o._data;
@@ -153,7 +160,7 @@ Bitvector::operator^= (const Bitvector &o)
 }
 
 void
-Bitvector::offset_or (const Bitvector &o, int offset)
+bitvector::offset_or (const bitvector &o, int offset)
 {
   uint32_t bits_1st = offset & 0x1F;
   int my_pos = offset >> 5;
@@ -178,7 +185,7 @@ Bitvector::offset_or (const Bitvector &o, int offset)
 }
 
 void
-Bitvector::or_with_difference (const Bitvector &o, Bitvector &diff)
+bitvector::or_with_difference (const bitvector &o, bitvector &diff)
 {
   if (diff._max != _max) diff.resize (_max + 1);
   int nn = max_word ();
@@ -191,7 +198,7 @@ Bitvector::or_with_difference (const Bitvector &o, Bitvector &diff)
 }
 
 bool
-Bitvector::nonzero_intersection (const Bitvector &o) const
+bitvector::nonzero_intersection (const bitvector &o) const
 {
   int nn = o.max_word ();
   if (nn > max_word ()) nn = max_word ();
@@ -202,7 +209,7 @@ Bitvector::nonzero_intersection (const Bitvector &o) const
 }
 
 void
-Bitvector::swap (Bitvector &x)
+bitvector::swap (bitvector &x)
 {
   uint32_t u = _f0;
   _f0 = x._f0;
@@ -222,11 +229,11 @@ Bitvector::swap (Bitvector &x)
 }
 
 string
-Bitvector::to_string ()
+bitvector::to_string ()
 {
   string res;
   for (int i = 0; i < size (); i++) {
-    if (Bitvector::Bit::unspecified_bool_type ((*this)[size () - i - 1])) {
+    if (bitvector::Bit::unspecified_bool_type ((*this)[size () - i - 1])) {
       res += '1';
     } else {
       res += '0';
