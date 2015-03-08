@@ -15,20 +15,7 @@
 #ifndef GRAPH_REPRESENTATION_HPP
 #define	GRAPH_REPRESENTATION_HPP
 
-#include <map>
-#include <igraph/igraph.h>
-#include <sstream>
-
 #include "network.h"
-
-/* XXX: Try to figure out igraph version based on very simple assumptions. */
-#define IGRAPH_V_0_6   60
-#define IGRAPH_V_0_5   50
-#ifdef IGRAPH_VERSION
-# define IGRAPH_V IGRAPH_V_0_6
-#else /* !defined(IGRAPH_VERSION) */
-# define IGRAPH_V IGRAPH_V_0_5
-#endif
 
 using namespace std;
 
@@ -70,43 +57,6 @@ public:
    */
   void
   calculateTMFIDs ();
-  /**@brief Builds internal structures representation from an igraph instance
-   *
-   * It uses the igraph representation that is built from barabasi-albert algorithm and builds internal structures.
-   */
-  void
-  buildInputMap (void);
-  /**@brief builds 8-byte ascii lables from integer ids
-   *
-   * builds 8-byte ascii lables from integer ids
-   *
-   * @param id the integer identifier for conversion
-   * @return the string representation for the identifier
-   */
-  string
-  produceStringLabelsFromIds (int id);
-  /**@brief Find the leaf vertices of the graph.
-   * This function finds the leaf vertices of the current graph and outputs the result to a file in a specific format. This file can be used for experiments.
-   *
-   * @param filename the filename for the output.
-   */
-  void
-  outputLeafVertices (string filename);
-  /**@brief Chooses the best TM RV node by finding the node with the least distance from the rest.
-   *
-   * Chooses the best TM RV node by finding the node with the least distance from the rest. It sets the RV TM in the internal deployment tool graph representation
-   */
-  void
-  chooseBestTMRVNode (void);
-  /**@brief adds  a connection in the internal deployment tool representation between the vertices that are provided as input
-   *
-   * adds  a connection in the internal deployment tool representation between the vertices that are provided as input
-   *
-   * @param nn1 network vertex 1
-   * @param nn2 network vertex 2
-   */
-  void
-  addGeneratedMappedConnection (network_node *nn1, network_node *nn2);
 
   /**
    * @brief node_index another STL map used for planetlab node indexing

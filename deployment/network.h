@@ -14,22 +14,15 @@
 #ifndef NETWORK_HPP
 #define	NETWORK_HPP
 
-#include <boost/graph/graph_traits.hpp>
-#include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/dijkstra_shortest_paths.hpp>
-#include <boost/program_options.hpp>
-#include <boost/graph/graphml.hpp>
-
-#include <boost/smart_ptr.hpp>
-#include <boost/property_map/dynamic_property_map.hpp>
-#include <boost/property_map/property_map.hpp>
-
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/property_tree/info_parser.hpp>
+
 #include <boost/foreach.hpp>
+
+#include <map>
 
 #include "bitvector.h"
 
@@ -37,7 +30,12 @@ using namespace std;
 
 struct network;
 struct node;
-struct link;
+struct connection;
+struct ns3_application;
+
+typedef boost::shared_ptr<node> node_ptr;
+typedef boost::shared_ptr<connection> connection_ptr;
+typedef boost::shared_ptr<ns3_application> ns3_application_ptr;
 
 void
 parse_configuration (boost::property_tree::ptree &pt, const string &filename, const string &format);
@@ -56,10 +54,10 @@ struct network
   string running_mode;		// can be specified globally
   string operating_system;	// can be specified globally
 
-  map<string, struct node> nodes;
+  map<string, node_ptr> nodes;
 
-  node *rv_node;
-  node *tm_node;
+  node_ptr rv_node;
+  node_ptr tm_node;
 
   /* used internally */
 
@@ -70,10 +68,14 @@ struct network
   assign_link_ids ();
   void
   calculate_lid (map<string, bitvector>& link_identifiers, int index);
+
+  void
+  discover_mac_addresses ();
+  void
+  assign_mac_addresses ();
   /* print network information */
   void
   print ();
-
 };
 
 struct node
@@ -94,9 +96,11 @@ struct node
   string operating_system;	// parsed or provided globally for the network (default: Linux)
 
   /* internally connections are unidirectional - they are indexed by the destination node label */
-  map<string, struct connection> connections;
+  multimap<string, connection_ptr> connections;
 
-  vector<struct ns3_application> ns3_applications;
+  /* if is_simulation == true */
+  vector<ns3_application_ptr> ns3_applications;
+  int device_offset;
 
   /* used internally */
   bitvector internal_link_id;
@@ -112,17 +116,17 @@ struct connection
   string overlay_mode;
   bool is_bidirectional;
 
-  string src_label; 		//read from configuration file
-  string dst_label; 		//read from configuration file
+  string src_label;
+  string dst_label;
 
-  string src_if; 		//read from configuration file /*e.g. tap0 or eth1*/
-  string dst_if; 		//read from configuration file /*e.g. tap0 or eth1*/
+  string src_if; /* e.g. tap0 or eth1 */
+  string dst_if; /* e.g. tap0 or eth1 */
 
-  string src_ip; 		//read from configuration file /*an IP address - i will not resolve mac addresses in this case*/
-  string dst_ip; 		//read from configuration file /*an IP address - i will not resolve mac addresses in this case*/
+  string src_ip; /* an IP address - i will not resolve mac addresses in this case */
+  string dst_ip; /* an IP address - i will not resolve mac addresses in this case */
 
-  string src_mac; 		//will be retrieved using ssh
-  string dst_mac; 		//will be retrieved using ssh
+  string src_mac;
+  string dst_mac;
 
   /* used internally */
   bitvector link_id;
@@ -130,7 +134,7 @@ struct connection
   void
   load (const boost::property_tree::ptree &pt);
   void
-  reverse (connection &connection);
+  reverse (connection_ptr reverse_ptr);
 };
 
 /* an ns-3 application */

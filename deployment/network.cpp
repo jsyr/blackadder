@@ -66,9 +66,6 @@ network::load (const string &filename, const string &format)
   using boost::property_tree::ptree;
   ptree pt;
 
-  rv_node = NULL;
-  tm_node = NULL;
-
   /* parse configuration file */
   parse_configuration (pt, filename, format);
 
@@ -94,27 +91,27 @@ network::load (const string &filename, const string &format)
 
   try {
     BOOST_FOREACH (ptree::value_type & v, pt.get_child ("network.nodes")) {
-      node n;
-      n.load (v.second, *this);
-      pair<map<string, node>::iterator, bool> ret = nodes.insert (pair<string, struct node> (n.label, n));
+      node_ptr n_ptr (new node ());
+      n_ptr->load (v.second, *this);
+      pair<map<string, node_ptr>::iterator, bool> ret = nodes.insert (pair<string, node_ptr> (n_ptr->label, n_ptr));
       if (ret.second == false) {
-	cerr << "Node " << n.label << " is a duplicate. Aborting..." << endl;
+	cerr << "Node " << n_ptr->label << " is a duplicate. Aborting..." << endl;
 	exit (EXIT_FAILURE);
       } else {
-	if (n.is_rv == true) {
+	if (n_ptr->is_rv == true) {
 	  if (rv_node != NULL) {
 	    cerr << "Multiple RV nodes are defined. Aborting..." << endl;
 	    exit (EXIT_FAILURE);
 	  } else {
-	    rv_node = &((*ret.first).second);
+	    rv_node = n_ptr;
 	  }
 	}
-	if (n.is_tm == true) {
+	if (n_ptr->is_tm == true) {
 	  if (tm_node != NULL) {
 	    cerr << "Multiple TM nodes are defined. Aborting..." << endl;
 	    exit (EXIT_FAILURE);
 	  } else {
-	    tm_node = &((*ret.first).second);
+	    tm_node = n_ptr;
 	  }
 	}
       }
@@ -129,55 +126,48 @@ network::load (const string &filename, const string &format)
 
   try {
     BOOST_FOREACH (ptree::value_type & v, pt.get_child ("network.connections")) {
-      connection c;
-      map<string, struct node>::iterator src_iter;
-      c.load (v.second);
+      connection_ptr c_ptr (new connection ());
+      map<string, node_ptr>::iterator src_iter;
+      c_ptr->load (v.second);
 
       /* insert connection in src node connection map */
-      src_iter = nodes.find (c.src_label);
+      src_iter = nodes.find (c_ptr->src_label);
       if (src_iter != nodes.end ()) {
-
-	pair<map<string, connection>::iterator, bool> ret = src_iter->second.connections.insert (pair<string, struct connection> (c.dst_label, c));
-	if (ret.second == false) {
-	  cerr << "Connection with source node " << c.src_label << " and destination node " << c.dst_label << " is a duplicate. Aborting..." << endl;
+	if (nodes.find (c_ptr->dst_label) != nodes.end ()) {
+	  src_iter->second->connections.insert (pair<string, connection_ptr> (c_ptr->dst_label, c_ptr));
+	} else {
+	  cerr << "Node " << c_ptr->dst_label << " does not exist. Aborting..." << endl;
 	  exit (EXIT_FAILURE);
 	}
       } else {
-	cerr << "Node " << c.src_label << " does not exist. Aborting..." << endl;
+	cerr << "Node " << c_ptr->src_label << " does not exist. Aborting..." << endl;
 	exit (EXIT_FAILURE);
       }
 
-      if (c.is_bidirectional) {
+      if (c_ptr->is_bidirectional) {
 	/* internally, connections are treated as unidirectional */
 	/* insert reversed connection in dst node connection map */
-	connection reverse;
-	c.reverse (reverse);
-	src_iter = nodes.find (reverse.src_label);
-	if (src_iter != nodes.end ()) {
-	  pair<map<string, connection>::iterator, bool> ret = src_iter->second.connections.insert (pair<string, struct connection> (reverse.dst_label, reverse));
-	  if (ret.second == false) {
-	    cerr << "Connection with source node " << reverse.src_label << " and destination node " << reverse.dst_label << " is a duplicate. Aborting..." << endl;
-	    exit (EXIT_FAILURE);
-	  }
-	} else {
-	  cerr << "Node " << reverse.src_label << " does not exist. Aborting..." << endl;
-	  exit (EXIT_FAILURE);
-	}
+	connection_ptr reverse_ptr (new connection ());
+	c_ptr->reverse (reverse_ptr);
+	src_iter = nodes.find (reverse_ptr->src_label);
+	/* both source and destination nodes exist - checked above */
+	src_iter->second->connections.insert (pair<string, connection_ptr> (reverse_ptr->dst_label, reverse_ptr));
       }
     }
   } catch (boost::property_tree::ptree_bad_data& err) {
     cerr << err.what () << endl;
     exit (EXIT_FAILURE);
   } catch (boost::property_tree::ptree_bad_path& err) {
+    /* this is allowed to support one node deployments for debugging */
     cerr << "No connections are defined " << endl;
   }
 
   if (is_simulation) {
     try {
       BOOST_FOREACH (ptree::value_type & v, pt.get_child ("network.applications")) {
-	ns3_application a;
-	a.load (v.second);
-	nodes.at (a.node_label).ns3_applications.push_back (a);
+	ns3_application_ptr a_ptr;
+	a_ptr->load (v.second);
+	nodes.at (a_ptr->node_label)->ns3_applications.push_back (a_ptr);
       }
     } catch (boost::property_tree::ptree_bad_data& err) {
       cerr << err.what () << endl;
@@ -195,10 +185,6 @@ network::load (const string &filename, const string &format)
     cerr << "No RV node is defined. Aborting..." << endl;
     exit (EXIT_FAILURE);
   }
-
-  /* assign Link Identifiers and internal link identifiers */
-  assign_link_ids ();
-  print ();
 }
 
 void
@@ -223,8 +209,11 @@ network::calculate_lid (map<string, bitvector>& link_identifiers, int index)
 void
 network::assign_link_ids ()
 {
-  typedef std::pair<string, node> node_map_pair_t;
-  typedef std::pair<string, connection> connection_map_pair_t;
+  typedef pair<string, node_ptr> node_map_pair_t;
+  typedef pair<string, connection_ptr> connection_map_pair_t;
+
+  map<string, bitvector> link_identifiers;
+  map<string, bitvector>::iterator link_identifiers_iterator;
 
   int lid_counter = 0;
   srand (0);
@@ -237,11 +226,8 @@ network::assign_link_ids ()
 
   /* link identifiers */
   BOOST_FOREACH(node_map_pair_t node_pair, nodes) {
-    total_ids += node_pair.second.connections.size ();
+    total_ids += node_pair.second->connections.size ();
   }
-
-  map<string, bitvector> link_identifiers;
-  map<string, bitvector>::iterator link_identifiers_iterator;
 
   for (int i = 0; i < total_ids; i++) {
     calculate_lid (link_identifiers, i);
@@ -249,13 +235,11 @@ network::assign_link_ids ()
 
   link_identifiers_iterator = link_identifiers.begin ();
   BOOST_FOREACH(node_map_pair_t node_pair, nodes) {
-    node &n = nodes[node_pair.first];
-    n.internal_link_id = (*link_identifiers_iterator).second;
+    node_pair.second->internal_link_id = (*link_identifiers_iterator).second;
     link_identifiers_iterator++;
 
-    BOOST_FOREACH(connection_map_pair_t connection_pair, n.connections) {
-      connection &c = n.connections[connection_pair.first];
-      c.link_id = (*link_identifiers_iterator).second;
+    BOOST_FOREACH(connection_map_pair_t connection_pair, node_pair.second->connections) {
+      connection_pair.second->link_id = (*link_identifiers_iterator).second;
       link_identifiers_iterator++;
     }
   }
@@ -264,8 +248,8 @@ network::assign_link_ids ()
 void
 network::print ()
 {
-  typedef std::pair<string, node> node_map_pair_t;
-  typedef std::pair<string, connection> connection_map_pair_t;
+  typedef pair<string, node_ptr> node_map_pair_t;
+  typedef pair<string, connection_ptr> connection_map_pair_t;
 
   cout << "--------------------NETWORK----------------------" << endl;
   cout << "info_id_len:      " << info_id_len << endl;
@@ -276,41 +260,41 @@ network::print ()
 
   BOOST_FOREACH(node_map_pair_t node_pair, nodes) {
 
-    struct node n = node_pair.second;
-    cout << "------------------NODE " << n.label << "------------------" << endl;
-    cout << "testbed_ip:       " << n.testbed_ip << endl;
-    cout << "user:             " << n.user << endl;
-    cout << "is_rv:            " << n.is_rv << endl;
-    cout << "is_tm:            " << n.is_tm << endl;
-    cout << "user:             " << n.user << endl;
-    cout << "sudo:             " << n.sudo << endl;
-    cout << "click_home:       " << n.click_home << endl;
-    cout << "conf_home:        " << n.conf_home << endl;
-    cout << "running_mode:     " << n.running_mode << endl;
-    cout << "operating_system: " << n.operating_system << endl;
-    cout << "internal_link_id: " << n.internal_link_id.to_string () << endl;
+    node_ptr n_ptr = node_pair.second;
+    cout << "------------------NODE " << n_ptr->label << "------------------" << endl;
+    cout << "testbed_ip:       " << n_ptr->testbed_ip << endl;
+    cout << "user:             " << n_ptr->user << endl;
+    cout << "is_rv:            " << n_ptr->is_rv << endl;
+    cout << "is_tm:            " << n_ptr->is_tm << endl;
+    cout << "user:             " << n_ptr->user << endl;
+    cout << "sudo:             " << n_ptr->sudo << endl;
+    cout << "click_home:       " << n_ptr->click_home << endl;
+    cout << "conf_home:        " << n_ptr->conf_home << endl;
+    cout << "running_mode:     " << n_ptr->running_mode << endl;
+    cout << "operating_system: " << n_ptr->operating_system << endl;
+    cout << "internal_link_id: " << n_ptr->internal_link_id.to_string () << endl;
 
-    BOOST_FOREACH(connection_map_pair_t connection_pair, n.connections) {
-      struct connection c = connection_pair.second;
-      cout << "---------CONNECTION " << c.src_label << " - " << c.dst_label << "----------" << endl;
-      cout << "src_label:        " << c.src_label << endl;
-      cout << "dst_label:        " << c.dst_label << endl;
+    BOOST_FOREACH(connection_map_pair_t connection_pair, n_ptr->connections) {
+      connection_ptr c_ptr = connection_pair.second;
+      cout << "---------CONNECTION " << c_ptr->src_label << " - " << c_ptr->dst_label << "----------" << endl;
+      cout << "src_label:        " << c_ptr->src_label << endl;
+      cout << "dst_label:        " << c_ptr->dst_label << endl;
 
-      cout << "overlay_mode:     " << c.overlay_mode << endl;
-      if (c.overlay_mode.compare ("ethernet") == 0) {
-	cout << "src_if:           " << c.src_if << endl;
-	cout << "dst_if:           " << c.dst_if << endl;
-	cout << "src_mac:          " << c.src_mac << endl;
-	cout << "dst_mac:          " << c.dst_mac << endl;
+      cout << "overlay_mode:     " << c_ptr->overlay_mode << endl;
+      if (c_ptr->overlay_mode.compare ("Ethernet") == 0) {
+	cout << "src_if:           " << c_ptr->src_if << endl;
+	cout << "dst_if:           " << c_ptr->dst_if << endl;
+	cout << "src_mac:          " << c_ptr->src_mac << endl;
+	cout << "dst_mac:          " << c_ptr->dst_mac << endl;
       } else {
-	cout << "src_ip:           " << c.src_ip << endl;
-	cout << "dst_ip:           " << c.dst_ip << endl;
+	cout << "src_ip:           " << c_ptr->src_ip << endl;
+	cout << "dst_ip:           " << c_ptr->dst_ip << endl;
       }
-      cout << "link_id:          " << c.link_id.to_string () << endl;
+      cout << "link_id:          " << c_ptr->link_id.to_string () << endl;
       cout << "-------------------------------------------------" << endl;
     }
 
-    BOOST_FOREACH(ns3_application app, n.ns3_applications) {
+    BOOST_FOREACH(ns3_application_ptr app, n_ptr->ns3_applications) {
       // TODO: add stuff
     }
 
@@ -384,7 +368,7 @@ node::load (const boost::property_tree::ptree &pt, struct network &network)
     /* operating_system can be set globally for the whole network */
     if (network.operating_system.compare ("unspecified") == 0) {
       /* operating_system was not specified globally - use the provided or the default value */
-      operating_system = pt.get<string> ("operating_system", "linux");
+      operating_system = pt.get<string> ("operating_system", "Linux");
     } else {
       /* if not overriden here, use the global value */
       operating_system = pt.get<string> ("operating_system", network.operating_system);
@@ -413,8 +397,8 @@ connection::load (const boost::property_tree::ptree &pt)
     }
 
     /* optional - with default value */
-    overlay_mode = pt.get<string> ("overlay_mode", "ethernet");
-    if (overlay_mode.compare ("ethernet") == 0) {
+    overlay_mode = pt.get<string> ("overlay_mode", "Ethernet");
+    if (overlay_mode.compare ("Ethernet") == 0) {
       /* mandatory */
       src_if = pt.get<string> ("src_if");
       dst_if = pt.get<string> ("dst_if");
@@ -429,6 +413,7 @@ connection::load (const boost::property_tree::ptree &pt)
       cerr << "Unrecognised overlay_mode. Aborting..." << endl;
       exit (EXIT_FAILURE);
     }
+    /* by default connections are bidirectional */
     is_bidirectional = pt.get<bool> ("is_bidirectional", "true");
   } catch (boost::property_tree::ptree_bad_data& err) {
     cerr << err.what () << endl;
@@ -440,20 +425,22 @@ connection::load (const boost::property_tree::ptree &pt)
 }
 
 void
-connection::reverse (connection &c)
+connection::reverse (connection_ptr reverse_ptr)
 {
+  reverse_ptr->is_bidirectional = is_bidirectional;
+  reverse_ptr->overlay_mode = overlay_mode;
 
-  c.src_label = dst_label;
-  c.dst_label = src_label;
+  reverse_ptr->src_label = dst_label;
+  reverse_ptr->dst_label = src_label;
 
-  c.src_if = dst_if;
-  c.dst_if = src_if;
+  reverse_ptr->src_if = dst_if;
+  reverse_ptr->dst_if = src_if;
 
-  c.src_mac = dst_mac;
-  c.dst_mac = src_mac;
+  reverse_ptr->src_mac = dst_mac;
+  reverse_ptr->dst_mac = src_mac;
 
-  c.src_ip = dst_ip;
-  c.dst_ip = src_ip;
+  reverse_ptr->src_ip = dst_ip;
+  reverse_ptr->dst_ip = src_ip;
 
 }
 
@@ -470,303 +457,132 @@ ns3_application::load (const boost::property_tree::ptree &pt)
 //  if (nn) return nn->testbed_ip;
 //  return "";
 //}
-//
-///* Values for target machines running Linux: */
-//#define HWADDR_LABEL   "HWaddr"
-//#define HWADDR_OFFSET  21
-//
-//#define HWADDR_LABEL_FREEBSD   "ether"
-//#define HWADDR_OFFSET_FREEBSD  19
-//
-//#define HWADDR_LABEL_DARWIN   "ether"
-//#define HWADDR_OFFSET_DARWIN  20
-//
-//static void
-//getHwaddrLabel (const string &os, string &hwaddr_label, int &hwaddr_offset)
-//{
-//  if (os.compare ("Linux") == 0) {
-//    hwaddr_label = HWADDR_LABEL;
-//    hwaddr_offset = HWADDR_OFFSET;
-//  } else if (os.compare ("FreeBSD") == 0) {
-//    hwaddr_label = HWADDR_LABEL_FREEBSD;
-//    hwaddr_offset = HWADDR_OFFSET_FREEBSD;
-//  } else if (os.compare ("Darwin") == 0) {
-//    hwaddr_label = HWADDR_LABEL_DARWIN;
-//    hwaddr_offset = HWADDR_OFFSET_DARWIN;
-//  } else {
-//    hwaddr_label = HWADDR_LABEL;
-//    hwaddr_offset = HWADDR_OFFSET;
-//  }
-//}
-//
-//void
-//network::discover_mac_addresses (bool no_remote)
-//{
-//  map<string, string> mac_addresses;
-//  string testbed_ip;
-//  string line;
-//  string mac_addr;
-//  FILE *fp_command;
-//  char response[1035];
-//  string command;
-//  string hwaddr_label;
-//  int hwaddr_offset;
-//  for (size_t i = 0; i < network_nodes.size (); i++) {
-//    network_node *nn = network_nodes[i];
-//    for (size_t j = 0; j < nn->connections.size (); j++) {
-//      network_connection *nc = nn->connections[j];
-//
-//      if (overlay_mode.compare ("mac") == 0) {
-//
-//	if (mac_addresses.find (nc->src_label + nc->src_if) == mac_addresses.end ()) {
-//	  /*get source mac address*/
-//	  if (nc->src_mac.length () == 0 && !no_remote) {
-//	    network_node *src_node = find_node (nc->src_label);
-//	    if (src_node) {
-//	      getHwaddrLabel (src_node->operating_system, hwaddr_label, hwaddr_offset);
-//	      testbed_ip = src_node->testbed_ip;
-//	    }
-//	    if (sudo) {
-//	      command = "ssh " + user + "@" + testbed_ip + " -t \"sudo ifconfig " + nc->src_if + " | grep " + hwaddr_label + "\"";
-//	    } else {
-//	      command = "ssh " + user + "@" + testbed_ip + " -t \"ifconfig " + nc->src_if + " | grep " + hwaddr_label + "\"";
-//	    }
-//	    cout << command << endl;
-//	    fp_command = popen (command.c_str (), "r");
-//	    if (fp_command == NULL) {
-//	      printf ("Failed to run command\n");
-//	      goto close_src;
-//	    }
-//	    /* Read the output a line at a time - output it. */
-//	    if (fgets (response, sizeof(response) - 1, fp_command) == NULL) {
-//	      cout << "Error or empty response." << endl;
-//	      goto close_src;
-//	    }
-//	    line = string (response);
-//	    mac_addr = line.substr (line.length () - hwaddr_offset, 17);
-//	    cout << mac_addr << endl;
-//	    nc->src_mac = mac_addr;
-//	    /* close */
-//	    close_src: pclose (fp_command);
-//	  } else if (nc->src_mac.length () != 0) {
-//	    cout << nn->label << ": I already know the src mac address (" << nc->src_mac << ") for this connection (" << nc->src_label << ":" << nc->src_if << " -> " << nc->dst_label << ":"
-//		<< nc->dst_if << ")...it was hardcoded in the configuration file" << endl;
-//	  } else {
-//	    nc->src_mac = "00:00:00:00:00:00"; /* XXX */
-//	  }
-//	  mac_addresses[nc->src_label + nc->src_if] = nc->src_mac;
-//	} else {
-//	  nc->src_mac = mac_addresses[nc->src_label + nc->src_if];
-//	  //cout << "I learned this mac address: " << nc->src_label << ":" << nc->src_if << " - " << mac_addresses[nc->src_label + nc->src_if] << endl;
-//	}
-//
-//	if (mac_addresses.find (nc->dst_label + nc->dst_if) == mac_addresses.end ()) {
-//	  /*get destination mac address*/
-//	  if (nc->dst_mac.length () == 0 && !no_remote) {
-//	    network_node *dst_node = find_node (nc->dst_label);
-//	    if (dst_node) {
-//	      getHwaddrLabel (dst_node->operating_system, hwaddr_label, hwaddr_offset);
-//	      testbed_ip = dst_node->testbed_ip;
-//	    }
-//	    if (sudo) {
-//	      command = "ssh " + user + "@" + testbed_ip + " -t \"sudo ifconfig " + nc->dst_if + " | grep " + hwaddr_label + "\"";
-//	    } else {
-//	      command = "ssh " + user + "@" + testbed_ip + " -t \"ifconfig " + nc->dst_if + " | grep " + hwaddr_label + "\"";
-//	    }
-//	    cout << command << endl;
-//	    fp_command = popen (command.c_str (), "r");
-//	    if (fp_command == NULL) {
-//	      printf ("Failed to run command\n");
-//	      goto close_dst;
-//	    }
-//	    /* Read the output a line at a time - output it. */
-//	    if (fgets (response, sizeof(response) - 1, fp_command) == NULL) {
-//	      cout << "Error or empty response." << endl;
-//	      goto close_dst;
-//	    }
-//	    line = string (response);
-//	    mac_addr = line.substr (line.length () - hwaddr_offset, 17);
-//	    cout << mac_addr << endl;
-//	    nc->dst_mac = mac_addr;
-//	    /* close */
-//	    close_dst: pclose (fp_command);
-//	  } else if (nc->dst_mac.length () != 0) {
-//	    cout << nn->label << ": I already know the dst mac address (" << nc->dst_mac << ") for this connection (" << nc->src_label << ":" << nc->src_if << " -> " << nc->dst_label << ":"
-//		<< nc->dst_if << ")...it was hardcoded in the configuration file" << endl;
-//	  } else {
-//	    nc->dst_mac = "00:00:00:00:00:00"; /* XXX */
-//	  }
-//	  mac_addresses[nc->dst_label + nc->dst_if] = nc->dst_mac;
-//	} else {
-//	  nc->dst_mac = mac_addresses[nc->dst_label + nc->dst_if];
-//	  //cout << "I learned this mac address: " << nc->dst_label << ":" << nc->dst_if << " - " << mac_addresses[nc->src_label + nc->src_if] << endl;
-//	}
-//      } else {
-//	//cout << "no need to discover mac addresses - it's a connection over raw IP sockets" << endl;
-//      }
-//    }
-//  }
-//}
 
-//string
-//network::get_next_mac_address ()
-//{
-//  uint8_t m_address[6];
-//  string mac_str;
-//  std::stringstream ss;
-//  m_address[0] = (id >> 40) & 0xff;
-//  m_address[1] = (id >> 32) & 0xff;
-//  m_address[2] = (id >> 24) & 0xff;
-//  m_address[3] = (id >> 16) & 0xff;
-//  m_address[4] = (id >> 8) & 0xff;
-//  m_address[5] = (id >> 0) & 0xff;
-//  id++;
-//  ss.setf (std::ios::hex, std::ios::basefield);
-//
-//  ss.fill ('0');
-//  for (uint8_t i = 0; i < 5; i++) {
-//    ss << std::setw (2) << (uint32_t) m_address[i] << ":";
-//  }
-//  // Final byte not suffixed by ":"
-//  ss << std::setw (2) << (uint32_t) m_address[5];
-//  ss.setf (std::ios::dec, std::ios::basefield);
-//  ss.fill (' ');
-//  mac_str = ss.str ();
-//  return mac_str;
-//}
-//
-///*probably the most inefficient way of doing it!!*/
-//void
-//network::assign_device_names_mac_addresses ()
-//{
-//  for (size_t i = 0; i < network_nodes.size (); i++) {
-//    network_node *nn = network_nodes[i];
-//    cout << "Looking at Node " << nn->label << ", Device Offset " << nn->device_offset << endl;
-//    for (size_t j = 0; j < nn->connections.size (); j++) {
-//      network_connection *nc = nn->connections[j];
-//      cout << "Looking at Connection " << nc->src_label << " -> " << nc->dst_label << endl;
-//      /*check if I have already considered this connection (the other way) before*/
-//      if ((nc->src_if.empty ()) && (nc->dst_if.empty ())) {
-//	std::stringstream out1;
-//	out1 << nn->device_offset;
-//	nc->src_if = "eth" + out1.str ();
-//	nc->src_mac = get_next_mac_address ();
-//	std::stringstream out2;
-//	network_node *neighbour = get_node (nc->dst_label);
-//	out2 << neighbour->device_offset;
-//	nc->dst_if = "eth" + out2.str ();
-//	nc->dst_mac = get_next_mac_address ();
-//	cout << "Assigning " << nn->label << ", device offset " << nn->device_offset << ", device name " << nc->src_if << ", MAC Address " << nc->src_mac << endl;
-//	cout << "Assigning " << neighbour->label << ", device offset " << neighbour->device_offset << ", device name " << nc->dst_if << ", MAC Address " << nc->dst_mac << endl;
-//	nn->device_offset++;
-//	neighbour->device_offset++;
-//	/*find the connection from the neighbour node and assign the same interfaces*/
-//	network_connection *neighbourConnection = neighbour->getConnection (nc->dst_label, nc->src_label);
-//	neighbourConnection->src_if = nc->dst_if;
-//	neighbourConnection->dst_if = nc->src_if;
-//	neighbourConnection->src_mac = nc->dst_mac;
-//	neighbourConnection->dst_mac = nc->src_mac;
-//      } else {
-//	cout << "Already checked that connection" << endl;
-//	cout << "device name " << nc->src_if << ", MAC Address " << nc->src_mac << endl;
-//	cout << "device name " << nc->dst_if << ", MAC Address " << nc->dst_mac << endl;
-//      }
-//    }
-//  }
-//}
-//
-//void
-//network::create_ns3_code ()
-//{
-//  ofstream ns3_code;
-//  ns3_code.open ((write_conf + "topology.cpp").c_str ());
-//  /*First write all required stuff before starting to build the actual topology*/
-//  ns3_code << "#include <ns3/core-module.h>" << endl;
-//  ns3_code << "#include <ns3/network-module.h>" << endl;
-//  ns3_code << "#include <ns3/point-to-point-module.h>" << endl;
-//  ns3_code << "#include <ns3/blackadder-module.h>" << endl;
-//  ns3_code << "using namespace ns3;" << endl;
-//  ns3_code << "NS_LOG_COMPONENT_DEFINE(\"topology\");" << endl;
-//  ns3_code << "int main(int argc, char *argv[]) {" << endl;
-//  /*create all nodes now*/
-//  for (size_t i = 0; i < network_nodes.size (); i++) {
-//    network_node *nn = network_nodes[i];
-//    ns3_code << "   Ptr<Node> node" << i << " = CreateObject<Node>();" << endl;
-//    std::stringstream out2;
-//    out2 << "node" << i;
-//    label_to_node_name.insert (pair<string, string> (nn->label, out2.str ()));
-//    for (size_t j = 0; j < nn->connections.size (); j++) {
-//      network_connection *nc = nn->connections[j];
-//      ns3_code << "   Ptr<PointToPointNetDevice> dev" << i << "_" << j << " = Create<PointToPointNetDevice>();" << endl;
-//      ns3_code << "   dev" << i << "_" << j << "->SetAddress (Mac48Address(\"" << nc->src_mac << "\"));" << endl;
-//      ns3_code << "   dev" << i << "_" << j << "->SetDataRate (DataRate(\"" << nc->rate << "\"));" << endl;
-//      ns3_code << "   dev" << i << "_" << j << "->SetMtu (" << nc->mtu << ");" << endl;
-//      std::stringstream out1;
-//      out1 << "dev" << i << "_" << j;
-//      address_to_device_name.insert (pair<string, string> (nc->src_mac, out1.str ()));
-//      ns3_code << "   node" << i << "->AddDevice(dev" << i << "_" << j << ");" << endl;
-//      /*The type of queue can be a parameter in the initial topology file that is parsed (along with its attributes)*/
-//      ns3_code << "   Ptr<DropTailQueue> queue" << i << "_" << j << " = CreateObject<DropTailQueue > ();" << endl;
-//      ns3_code << "   dev" << i << "_" << j << "->SetQueue(queue" << i << "_" << j << ");" << endl;
-//    }
-//    ns3_code << endl;
-//  }
-//  int channel_counter = 0;
-//  for (size_t i = 0; i < network_nodes.size (); i++) {
-//    network_node *nn = network_nodes[i];
-//    for (size_t j = 0; j < nn->connections.size (); j++) {
-//      network_connection *nc = nn->connections[j];
-//      if ((NS3devices_in_connections.find (nc->src_mac) == NS3devices_in_connections.end ()) && (NS3devices_in_connections.find (nc->dst_mac) == NS3devices_in_connections.end ())) {
-//	ns3_code << "   Ptr<PointToPointChannel> channel" << channel_counter << " = CreateObject<PointToPointChannel>();" << endl;
-//	ns3_code << "   channel" << channel_counter << "->SetAttribute(\"Delay\", StringValue(\"" << nc->delay << "\"));" << endl;
-//	ns3_code << "   " << (*address_to_device_name.find (nc->src_mac)).second << "->Attach(channel" << channel_counter << ");" << endl;
-//	ns3_code << "   " << (*address_to_device_name.find (nc->dst_mac)).second << "->Attach(channel" << channel_counter << ");" << endl;
-//	NS3devices_in_connections.insert (nc->src_mac);
-//	NS3devices_in_connections.insert (nc->dst_mac);
-//	channel_counter++;
-//	ns3_code << endl;
-//      }
-//    }
-//  }
-//  for (size_t i = 0; i < network_nodes.size (); i++) {
-//    network_node *nn = network_nodes[i];
-//    ns3_code << "   Ptr<ClickBridge> click" << i << " = CreateObject<ClickBridge > ();" << endl;
-//    ns3_code << "   node" << i << "->AggregateObject(click" << i << ");" << endl;
-//    ns3_code << "   click" << i << "->SetClickFile(\"" << write_conf << "/" << nn->label << ".conf\");" << endl;
-//    ns3_code << "   Ptr<ServiceModel> servModel" << i << " = CreateObject<ServiceModel > (); " << endl;
-//    ns3_code << "   node" << i << "->AggregateObject(servModel" << i << "); " << endl;
-//  }
-//  ns3_code << endl;
-//
-//  /*Start the topology manager application to the respective network node*/
-//  ns3_code << "   Ptr<TopologyManager> tm = CreateObject<TopologyManager > ();" << endl;
-//  ns3_code << "   tm->SetStartTime(Seconds(0.)); " << endl;
-//  ns3_code << "   tm->SetAttribute(\"Topology\", StringValue(\"" << write_conf << "topology.graphml\"));" << endl;
-//  ns3_code << "   " << (*label_to_node_name.find (TM_node->label)).second << "->AddApplication(tm); " << endl;
-//  ns3_code << endl;
-//  /*add applications and attributes*/
-//  for (size_t i = 0; i < network_nodes.size (); i++) {
-//    network_node *nn = network_nodes[i];
-//    for (size_t j = 0; j < nn->applications.size (); j++) {
-//      ns3_application *app = nn->applications[j];
-//      ns3_code << "   Ptr<" << app->name << "> app" << i << "_" << j << " = CreateObject<" << app->name << "> ();" << endl;
-//      ns3_code << "   " << "app" << i << "_" << j << "->SetStartTime(Seconds(" << app->start << ")); " << endl;
-//      ns3_code << "   " << "app" << i << "_" << j << "->SetStopTime(Seconds(" << app->stop << ")); " << endl;
-//      for (size_t k = 0; k < app->attributes.size (); k++) {
-//	ns3_application_attribute *attr = app->attributes[k];
-//	ns3_code << "   " << "app" << i << "_" << j << "->SetAttribute(\"" << attr->name << "\", " << attr->value << ");" << endl;
-//      }
-//      ns3_code << "   node" << i << "->AddApplication(app" << i << "_" << j << ");" << endl;
-//      ns3_code << endl;
-//    }
-//  }
-//  ns3_code << "   Simulator::Run();" << endl;
-//  ns3_code << "   Simulator::Destroy();" << endl;
-//  ns3_code << "   return 0;" << endl;
-//
-//  ns3_code << "}" << endl;
-//  ns3_code.close ();
-//}
+/* Values for target machines running Linux: */
+#define HWADDR_LABEL   "HWaddr"
+#define HWADDR_OFFSET  21
+
+#define HWADDR_LABEL_FREEBSD   "ether"
+#define HWADDR_OFFSET_FREEBSD  19
+
+#define HWADDR_LABEL_DARWIN   "ether"
+#define HWADDR_OFFSET_DARWIN  20
+
+static void
+getHwaddrLabel (const string &os, string &hwaddr_label, int &hwaddr_offset)
+{
+  if (os.compare ("Linux") == 0) {
+    hwaddr_label = HWADDR_LABEL;
+    hwaddr_offset = HWADDR_OFFSET;
+  } else if (os.compare ("FreeBSD") == 0) {
+    hwaddr_label = HWADDR_LABEL_FREEBSD;
+    hwaddr_offset = HWADDR_OFFSET_FREEBSD;
+  } else if (os.compare ("Darwin") == 0) {
+    hwaddr_label = HWADDR_LABEL_DARWIN;
+    hwaddr_offset = HWADDR_OFFSET_DARWIN;
+  } else {
+    hwaddr_label = HWADDR_LABEL;
+    hwaddr_offset = HWADDR_OFFSET;
+  }
+}
+
+void
+network::discover_mac_addresses ()
+{
+  typedef pair<string, node_ptr> node_map_pair_t;
+  typedef pair<string, connection_ptr> connection_map_pair_t;
+
+  map<string, string> mac_addresses;
+  string line;
+  FILE *fp_command;
+  char response[1035];
+  string command;
+  string hwaddr_label;
+  int hwaddr_offset;
+
+  BOOST_FOREACH(node_map_pair_t node_pair, nodes) {
+    node_ptr n_ptr = node_pair.second;
+    BOOST_FOREACH(connection_map_pair_t connection_pair, n_ptr->connections) {
+      connection_ptr c_ptr = connection_pair.second;
+      if (c_ptr->overlay_mode.compare ("Ethernet") == 0) {
+
+	if (mac_addresses.find (c_ptr->src_label + c_ptr->src_if) == mac_addresses.end ()) {
+	  /* get source mac address */
+	  if (c_ptr->src_mac.compare ("unspecified") == 0) {
+	    getHwaddrLabel (n_ptr->operating_system, hwaddr_label, hwaddr_offset);
+	    if (n_ptr->sudo) {
+	      command = "ssh " + user + "@" + n_ptr->testbed_ip + " -t \"sudo ifconfig " + c_ptr->src_if + " | grep " + hwaddr_label + "\"";
+	    } else {
+	      command = "ssh " + user + "@" + n_ptr->testbed_ip + " -t \"ifconfig " + c_ptr->src_if + " | grep " + hwaddr_label + "\"";
+	    }
+	    cout << command << endl;
+	    fp_command = popen (command.c_str (), "r");
+	    if (fp_command == NULL) {
+	      cout << "Failed to run command. Aborting..." << endl;
+	      pclose(fp_command);
+	      exit (EXIT_FAILURE);
+	    }
+	    /* Read the output a line at a time and print it */
+	    if (fgets (response, sizeof(response) - 1, fp_command) == NULL) {
+	      cout << "Error or empty response. Aborting..." << endl;
+	      pclose(fp_command);
+	      exit (EXIT_FAILURE);
+	    }
+	    line = string (response);
+	    c_ptr->src_mac = line.substr (line.length () - hwaddr_offset, 17);
+	    cout << c_ptr->src_mac << endl;
+	    pclose(fp_command);
+	  } else {
+	    cout << "Interface " << c_ptr->src_if << " pre-configured with " << c_ptr->src_mac << " for connection " << c_ptr->src_label << " - " << c_ptr->dst_label << endl;
+	  }
+	  mac_addresses[c_ptr->src_label + c_ptr->src_if] = c_ptr->src_mac;
+	} else {
+	  c_ptr->src_mac = mac_addresses[c_ptr->src_label + c_ptr->src_if];
+	  //cout << "I learned this mac address: " << nc->src_label << ":" << nc->src_if << " - " << mac_addresses[nc->src_label + nc->src_if] << endl;
+	}
+
+	if (mac_addresses.find (c_ptr->dst_label + c_ptr->dst_if) == mac_addresses.end ()) {
+	  /*get destination mac address*/
+	  if (c_ptr->dst_mac.compare ("unspecified") == 0) {
+	    node_ptr dst_node_ptr = (*nodes.find (c_ptr->dst_label)).second;
+	    getHwaddrLabel (dst_node_ptr->operating_system, hwaddr_label, hwaddr_offset);
+	    if (dst_node_ptr->sudo) {
+	      command = "ssh " + user + "@" + dst_node_ptr->testbed_ip + " -t \"sudo ifconfig " + c_ptr->dst_if + " | grep " + hwaddr_label + "\"";
+	    } else {
+	      command = "ssh " + user + "@" + dst_node_ptr->testbed_ip + " -t \"ifconfig " + c_ptr->dst_if + " | grep " + hwaddr_label + "\"";
+	    }
+	    cout << command << endl;
+	    fp_command = popen (command.c_str (), "r");
+	    if (fp_command == NULL) {
+	      cout << "Failed to run command. Aborting..." << endl;
+	      pclose(fp_command);
+	      exit (EXIT_FAILURE);
+	    }
+	    /* Read the output a line at a time - output it. */
+	    if (fgets (response, sizeof(response) - 1, fp_command) == NULL) {
+	      cout << "Error or empty response. Aborting..." << endl;
+	      pclose(fp_command);
+	      exit (EXIT_FAILURE);
+	    }
+	    line = string (response);
+	    c_ptr->dst_mac = line.substr (line.length () - hwaddr_offset, 17);
+	    cout << c_ptr->dst_mac << endl;
+	    pclose(fp_command);
+	  } else {
+	    cout << "Interface " << c_ptr->dst_if << " pre-configured with " << c_ptr->dst_mac << " for connection " << c_ptr->src_label << " - " << c_ptr->dst_label << endl;
+	  }
+	  mac_addresses[c_ptr->dst_label + c_ptr->dst_if] = c_ptr->dst_mac;
+	} else {
+	  /* learned this MAC address before */
+	  c_ptr->dst_mac = mac_addresses[c_ptr->dst_label + c_ptr->dst_if];
+	}
+      } else {
+	cout << "Connection " << c_ptr->src_label << " - " << c_ptr->dst_label << " is over IP. Nothing to discover here..." << endl;
+      }
+    }
+  }
+}
+
 //
 //int
 //findOffset (vector<string> &unique, string &str)
@@ -901,55 +717,6 @@ ns3_application::load (const boost::property_tree::ptree &pt)
 //}
 //
 //void
-//network::write_ns3_click_conf ()
-//{
-//  ofstream click_conf;
-//  for (size_t i = 0; i < network_nodes.size (); i++) {
-//    vector<string> unique_ifaces;
-//    network_node *nn = network_nodes[i];
-//    click_conf.open ((write_conf + nn->label + ".conf").c_str ());
-//    /*Blackadder Elements First*/
-//    click_conf << "globalconf::GlobalConf(MODE mac, NODEID " << nn->label << "," << endl;
-//    click_conf << "DEFAULTRV " << nn->fid_to_rv.to_string () << "," << endl;
-//    click_conf << "TMFID     " << nn->fid_to_tm.to_string () << "," << endl;
-//    click_conf << "iLID      " << nn->internal_lid.to_string () << ");" << endl << endl;
-//    click_conf << "localRV::LocalRV(globalconf);" << endl;
-//    click_conf << "toApps::ToSimDevice(tap0);" << endl << "fromApps::FromSimDevice(tap0);" << endl;
-//    click_conf << "proxy::LocalProxy(globalconf);" << endl << endl;
-//    click_conf << "fw::Forwarder(globalconf," << nn->connections.size () << "," << endl;
-//    for (size_t j = 0; j < nn->connections.size (); j++) {
-//      network_connection *nc = nn->connections[j];
-//      int offset;
-//      if ((offset = findOffset (unique_ifaces, nc->src_if)) == -1) {
-//	unique_ifaces.push_back (nc->src_if);
-//	if (j == nn->connections.size () - 1) {
-//	  click_conf << unique_ifaces.size () << "," << nc->src_mac << "," << nc->dst_mac << "," << nc->lid.to_string () << ");" << endl << endl;
-//	} else {
-//	  click_conf << unique_ifaces.size () << "," << nc->src_mac << "," << nc->dst_mac << "," << nc->lid.to_string () << "," << endl;
-//	}
-//      } else {
-//	if (j == nn->connections.size () - 1) {
-//	  click_conf << offset + 1 << "," << nc->src_mac << "," << nc->dst_mac << "," << nc->lid.to_string () << ");" << endl << endl;
-//	} else {
-//	  click_conf << offset + 1 << "," << nc->src_mac << "," << nc->dst_mac << "," << nc->lid.to_string () << "," << endl;
-//	}
-//      }
-//    }
-//    for (size_t j = 0; j < unique_ifaces.size (); j++) {
-//      click_conf << "tsf" << j << "::ThreadSafeQueue(1000);" << endl;
-//      click_conf << "fromsimdev" << j << "::FromSimDevice(" << unique_ifaces[j] << ");" << endl << "tosimdev" << j << "::ToSimDevice(" << unique_ifaces[j] << ");" << endl;
-//    }
-//    /*Now link all the elements appropriately*/
-//    click_conf << "proxy[0]->toApps;" << endl << "fromApps->[0]proxy;" << endl << "localRV[0]->[1]proxy[1]->[0]localRV;" << endl << "proxy[2]-> [0]fw[0] -> [2]proxy;" << endl;
-//    for (size_t j = 0; j < unique_ifaces.size (); j++) {
-//      click_conf << "fw[" << (j + 1) << "]->tsf" << j << "->tosimdev" << j << ";" << endl;
-//      click_conf << "fromsimdev" << j << "->[" << (j + 1) << "]fw;" << endl;
-//    }
-//    click_conf.close ();
-//  }
-//}
-//
-//void
 //network::scp_tm_conf (string TM_conf)
 //{
 //  FILE *scp_command;
@@ -1067,82 +834,218 @@ ns3_application::load (const boost::property_tree::ptree &pt)
 //  }
 //  pclose (ssh_command);
 //}
-//
-//// Planetlab Support starts Here
-//
+
 //string
-//network::write_config_file (string filename)
+//network::get_next_mac_address ()
 //{
+//  uint8_t m_address[6];
+//  string mac_str;
+//  stringstream ss;
+//  m_address[0] = (id >> 40) & 0xff;
+//  m_address[1] = (id >> 32) & 0xff;
+//  m_address[2] = (id >> 24) & 0xff;
+//  m_address[3] = (id >> 16) & 0xff;
+//  m_address[4] = (id >> 8) & 0xff;
+//  m_address[5] = (id >> 0) & 0xff;
+//  id++;
+//  ss.setf (ios::hex, ios::basefield);
 //
-//  ofstream configfile;
-//
-//  for (size_t i = 0; i < network_nodes.size (); i++) {
-//    configfile.open ((write_conf + filename).c_str ());
-//    //Domain Global stuff here
-//    configfile << "BLACKADDER_ID_LENGTH = " << ba_id_len << ";\n";
-//    configfile << "LIPSIN_ID_LENGTH = " << fid_len << ";\n";
-//    configfile << "CLICK_HOME = \"" << click_home << "\";\n";
-//    configfile << "WRITE_CONF = \"" << write_conf << "\";\n";
-//    configfile << "USER = \"" << user << "\";\n";
-//    if (sudo == 1) {
-//      configfile << "SUDO = true;\n";
-//    } else {
-//      configfile << "SUDO = false;\n";
-//    }
-//    configfile << "OVERLAY_MODE = \"" << overlay_mode << "\";\n\n\n";
-//    //network
-//    configfile << "network = {\n";
-//    configfile << "    nodes = (\n";
-//    if (overlay_mode.compare ("ip") == 0) {
-//      for (size_t i = 0; i < network_nodes.size (); i++) {
-//	network_node *nn = network_nodes[i];
-//	configfile << "     {\n";
-//	configfile << "       testbed_ip = \"" << nn->testbed_ip << "\";\n";
-//	configfile << "       running_mode = \"" << nn->running_mode << "\";\n";
-//	configfile << "       label = \"" << nn->label << "\";\n";
-//	if ((nn->is_rv == true) && (nn->is_tm == true)) {
-//	  configfile << "       role = [\"RV\",\"TM\"];\n";
-//	} else if (nn->is_rv == true) {
-//	  configfile << "       role = [\"RV\"];\n";
-//	} else if (nn->is_tm == true) {
-//	  configfile << "       role = [\"TM\"];\n";
-//	}
-//	configfile << "       connections = (\n";
-//	for (size_t j = 0; j < nn->connections.size (); j++) {
-//	  network_connection *nc = nn->connections[j];
-//	  configfile << "           {\n";
-//	  configfile << "               to = \"" << nc->dst_label << "\";\n";
-//	  configfile << "               src_ip = \"" << nc->src_ip << "\";\n";
-//	  configfile << "               dst_ip = \"" << nc->dst_ip << "\";\n";
-//	  if (j != (nn->connections.size () - 1)) {
-//	    configfile << "           },\n";
-//	  } else {
-//	    configfile << "           }\n";
-//	  }
-//	}
-//	configfile << "        );\n";
-//	if (i != (network_nodes.size () - 1)) {
-//	  configfile << "     },\n";
-//	} else {
-//	  configfile << "     }\n";
-//	}
-//      }
-//
-//    } else {
-//#if 0
-//      for (size_t i = 0; i < network_nodes.size(); i++)
-//      {
-//	network_node *nn = network_nodes[i];
-//	for (size_t j = 0; j < nn->connections.size(); j++)
-//	{
-//	  network_connection *nc = nn->connections[j];
-//	}
-//      }
-//#endif
-//    }
-//    configfile << "    );\n};";
+//  ss.fill ('0');
+//  for (uint8_t i = 0; i < 5; i++) {
+//    ss << setw (2) << (uint32_t) m_address[i] << ":";
 //  }
+//  // Final byte not suffixed by ":"
+//  ss << setw (2) << (uint32_t) m_address[5];
+//  ss.setf (ios::dec, ios::basefield);
+//  ss.fill (' ');
+//  mac_str = ss.str ();
+//  return mac_str;
+//}
+
+/* probably the most inefficient way of doing it!! */
+void
+network::assign_mac_addresses ()
+{
+  typedef pair<string, node_ptr> node_map_pair_t;
+  typedef pair<string, connection_ptr> connection_map_pair_t;
+
+  BOOST_FOREACH(node_map_pair_t node_pair, nodes) {
+    node_ptr n_ptr = node_pair.second;
+
+    //cout << "Looking at Node " << n_ptr->label << ", Device Offset " << n_ptr->device_offset << endl;
+
+    BOOST_FOREACH(connection_map_pair_t connection_pair, n_ptr->connections) {
+      connection_ptr c_ptr = connection_pair.second;
+
+//      cout << "Looking at Connection " << nc->src_label << " -> " << nc->dst_label << endl;
 //
-//  configfile.close ();
-//  return (write_conf + filename);
+//      /*check if I have already considered this connection (if it is bidirectional) before*/
+//      if ((nc->src_if.empty ()) && (nc->dst_if.empty ())) {
+//	stringstream out1;
+//	out1 << nn->device_offset;
+//	nc->src_if = "eth" + out1.str ();
+//	nc->src_mac = get_next_mac_address ();
+//	stringstream out2;
+//	network_node *neighbour = get_node (nc->dst_label);
+//	out2 << neighbour->device_offset;
+//	nc->dst_if = "eth" + out2.str ();
+//	nc->dst_mac = get_next_mac_address ();
+//	cout << "Assigning " << nn->label << ", device offset " << nn->device_offset << ", device name " << nc->src_if << ", MAC Address " << nc->src_mac << endl;
+//	cout << "Assigning " << neighbour->label << ", device offset " << neighbour->device_offset << ", device name " << nc->dst_if << ", MAC Address " << nc->dst_mac << endl;
+//	nn->device_offset++;
+//	neighbour->device_offset++;
+//	/*find the connection from the neighbour node and assign the same interfaces*/
+//	network_connection *neighbourConnection = neighbour->getConnection (nc->dst_label, nc->src_label);
+//	neighbourConnection->src_if = nc->dst_if;
+//	neighbourConnection->dst_if = nc->src_if;
+//	neighbourConnection->src_mac = nc->dst_mac;
+//	neighbourConnection->dst_mac = nc->src_mac;
+//      } else {
+//	cout << "Already checked that connection" << endl;
+//	cout << "device name " << nc->src_if << ", MAC Address " << nc->src_mac << endl;
+//	cout << "device name " << nc->dst_if << ", MAC Address " << nc->dst_mac << endl;
+//      }
+    }
+  }
+}
+
+//void
+//network::create_ns3_code ()
+//{
+//  ofstream ns3_code;
+//  ns3_code.open ((write_conf + "topology.cpp").c_str ());
+//  /*First write all required stuff before starting to build the actual topology*/
+//  ns3_code << "#include <ns3/core-module.h>" << endl;
+//  ns3_code << "#include <ns3/network-module.h>" << endl;
+//  ns3_code << "#include <ns3/point-to-point-module.h>" << endl;
+//  ns3_code << "#include <ns3/blackadder-module.h>" << endl;
+//  ns3_code << "using namespace ns3;" << endl;
+//  ns3_code << "NS_LOG_COMPONENT_DEFINE(\"topology\");" << endl;
+//  ns3_code << "int main(int argc, char *argv[]) {" << endl;
+//  /*create all nodes now*/
+//  for (size_t i = 0; i < network_nodes.size (); i++) {
+//    network_node *nn = network_nodes[i];
+//    ns3_code << "   Ptr<Node> node" << i << " = CreateObject<Node>();" << endl;
+//    stringstream out2;
+//    out2 << "node" << i;
+//    label_to_node_name.insert (pair<string, string> (nn->label, out2.str ()));
+//    for (size_t j = 0; j < nn->connections.size (); j++) {
+//      network_connection *nc = nn->connections[j];
+//      ns3_code << "   Ptr<PointToPointNetDevice> dev" << i << "_" << j << " = Create<PointToPointNetDevice>();" << endl;
+//      ns3_code << "   dev" << i << "_" << j << "->SetAddress (Mac48Address(\"" << nc->src_mac << "\"));" << endl;
+//      ns3_code << "   dev" << i << "_" << j << "->SetDataRate (DataRate(\"" << nc->rate << "\"));" << endl;
+//      ns3_code << "   dev" << i << "_" << j << "->SetMtu (" << nc->mtu << ");" << endl;
+//      stringstream out1;
+//      out1 << "dev" << i << "_" << j;
+//      address_to_device_name.insert (pair<string, string> (nc->src_mac, out1.str ()));
+//      ns3_code << "   node" << i << "->AddDevice(dev" << i << "_" << j << ");" << endl;
+//      /*The type of queue can be a parameter in the initial topology file that is parsed (along with its attributes)*/
+//      ns3_code << "   Ptr<DropTailQueue> queue" << i << "_" << j << " = CreateObject<DropTailQueue > ();" << endl;
+//      ns3_code << "   dev" << i << "_" << j << "->SetQueue(queue" << i << "_" << j << ");" << endl;
+//    }
+//    ns3_code << endl;
+//  }
+//  int channel_counter = 0;
+//  for (size_t i = 0; i < network_nodes.size (); i++) {
+//    network_node *nn = network_nodes[i];
+//    for (size_t j = 0; j < nn->connections.size (); j++) {
+//      network_connection *nc = nn->connections[j];
+//      if ((NS3devices_in_connections.find (nc->src_mac) == NS3devices_in_connections.end ()) && (NS3devices_in_connections.find (nc->dst_mac) == NS3devices_in_connections.end ())) {
+//	ns3_code << "   Ptr<PointToPointChannel> channel" << channel_counter << " = CreateObject<PointToPointChannel>();" << endl;
+//	ns3_code << "   channel" << channel_counter << "->SetAttribute(\"Delay\", StringValue(\"" << nc->delay << "\"));" << endl;
+//	ns3_code << "   " << (*address_to_device_name.find (nc->src_mac)).second << "->Attach(channel" << channel_counter << ");" << endl;
+//	ns3_code << "   " << (*address_to_device_name.find (nc->dst_mac)).second << "->Attach(channel" << channel_counter << ");" << endl;
+//	NS3devices_in_connections.insert (nc->src_mac);
+//	NS3devices_in_connections.insert (nc->dst_mac);
+//	channel_counter++;
+//	ns3_code << endl;
+//      }
+//    }
+//  }
+//  for (size_t i = 0; i < network_nodes.size (); i++) {
+//    network_node *nn = network_nodes[i];
+//    ns3_code << "   Ptr<ClickBridge> click" << i << " = CreateObject<ClickBridge > ();" << endl;
+//    ns3_code << "   node" << i << "->AggregateObject(click" << i << ");" << endl;
+//    ns3_code << "   click" << i << "->SetClickFile(\"" << write_conf << "/" << nn->label << ".conf\");" << endl;
+//    ns3_code << "   Ptr<ServiceModel> servModel" << i << " = CreateObject<ServiceModel > (); " << endl;
+//    ns3_code << "   node" << i << "->AggregateObject(servModel" << i << "); " << endl;
+//  }
+//  ns3_code << endl;
+//
+//  /*Start the topology manager application to the respective network node*/
+//  ns3_code << "   Ptr<TopologyManager> tm = CreateObject<TopologyManager > ();" << endl;
+//  ns3_code << "   tm->SetStartTime(Seconds(0.)); " << endl;
+//  ns3_code << "   tm->SetAttribute(\"Topology\", StringValue(\"" << write_conf << "topology.graphml\"));" << endl;
+//  ns3_code << "   " << (*label_to_node_name.find (TM_node->label)).second << "->AddApplication(tm); " << endl;
+//  ns3_code << endl;
+//  /*add applications and attributes*/
+//  for (size_t i = 0; i < network_nodes.size (); i++) {
+//    network_node *nn = network_nodes[i];
+//    for (size_t j = 0; j < nn->applications.size (); j++) {
+//      ns3_application *app = nn->applications[j];
+//      ns3_code << "   Ptr<" << app->name << "> app" << i << "_" << j << " = CreateObject<" << app->name << "> ();" << endl;
+//      ns3_code << "   " << "app" << i << "_" << j << "->SetStartTime(Seconds(" << app->start << ")); " << endl;
+//      ns3_code << "   " << "app" << i << "_" << j << "->SetStopTime(Seconds(" << app->stop << ")); " << endl;
+//      for (size_t k = 0; k < app->attributes.size (); k++) {
+//	ns3_application_attribute *attr = app->attributes[k];
+//	ns3_code << "   " << "app" << i << "_" << j << "->SetAttribute(\"" << attr->name << "\", " << attr->value << ");" << endl;
+//      }
+//      ns3_code << "   node" << i << "->AddApplication(app" << i << "_" << j << ");" << endl;
+//      ns3_code << endl;
+//    }
+//  }
+//  ns3_code << "   Simulator::Run();" << endl;
+//  ns3_code << "   Simulator::Destroy();" << endl;
+//  ns3_code << "   return 0;" << endl;
+//
+//  ns3_code << "}" << endl;
+//  ns3_code.close ();
+//}
+//void
+//network::write_ns3_click_conf ()
+//{
+//  ofstream click_conf;
+//  for (size_t i = 0; i < network_nodes.size (); i++) {
+//    vector<string> unique_ifaces;
+//    network_node *nn = network_nodes[i];
+//    click_conf.open ((write_conf + nn->label + ".conf").c_str ());
+//    /*Blackadder Elements First*/
+//    click_conf << "globalconf::GlobalConf(MODE mac, NODEID " << nn->label << "," << endl;
+//    click_conf << "DEFAULTRV " << nn->fid_to_rv.to_string () << "," << endl;
+//    click_conf << "TMFID     " << nn->fid_to_tm.to_string () << "," << endl;
+//    click_conf << "iLID      " << nn->internal_lid.to_string () << ");" << endl << endl;
+//    click_conf << "localRV::LocalRV(globalconf);" << endl;
+//    click_conf << "toApps::ToSimDevice(tap0);" << endl << "fromApps::FromSimDevice(tap0);" << endl;
+//    click_conf << "proxy::LocalProxy(globalconf);" << endl << endl;
+//    click_conf << "fw::Forwarder(globalconf," << nn->connections.size () << "," << endl;
+//    for (size_t j = 0; j < nn->connections.size (); j++) {
+//      network_connection *nc = nn->connections[j];
+//      int offset;
+//      if ((offset = findOffset (unique_ifaces, nc->src_if)) == -1) {
+//	unique_ifaces.push_back (nc->src_if);
+//	if (j == nn->connections.size () - 1) {
+//	  click_conf << unique_ifaces.size () << "," << nc->src_mac << "," << nc->dst_mac << "," << nc->lid.to_string () << ");" << endl << endl;
+//	} else {
+//	  click_conf << unique_ifaces.size () << "," << nc->src_mac << "," << nc->dst_mac << "," << nc->lid.to_string () << "," << endl;
+//	}
+//      } else {
+//	if (j == nn->connections.size () - 1) {
+//	  click_conf << offset + 1 << "," << nc->src_mac << "," << nc->dst_mac << "," << nc->lid.to_string () << ");" << endl << endl;
+//	} else {
+//	  click_conf << offset + 1 << "," << nc->src_mac << "," << nc->dst_mac << "," << nc->lid.to_string () << "," << endl;
+//	}
+//      }
+//    }
+//    for (size_t j = 0; j < unique_ifaces.size (); j++) {
+//      click_conf << "tsf" << j << "::ThreadSafeQueue(1000);" << endl;
+//      click_conf << "fromsimdev" << j << "::FromSimDevice(" << unique_ifaces[j] << ");" << endl << "tosimdev" << j << "::ToSimDevice(" << unique_ifaces[j] << ");" << endl;
+//    }
+//    /*Now link all the elements appropriately*/
+//    click_conf << "proxy[0]->toApps;" << endl << "fromApps->[0]proxy;" << endl << "localRV[0]->[1]proxy[1]->[0]localRV;" << endl << "proxy[2]-> [0]fw[0] -> [2]proxy;" << endl;
+//    for (size_t j = 0; j < unique_ifaces.size (); j++) {
+//      click_conf << "fw[" << (j + 1) << "]->tsf" << j << "->tosimdev" << j << ";" << endl;
+//      click_conf << "fromsimdev" << j << "->[" << (j + 1) << "]fw;" << endl;
+//    }
+//    click_conf.close ();
+//  }
 //}
