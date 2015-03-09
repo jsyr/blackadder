@@ -273,6 +273,8 @@ network::print ()
     cout << "running_mode:     " << n_ptr->running_mode << endl;
     cout << "operating_system: " << n_ptr->operating_system << endl;
     cout << "internal_link_id: " << n_ptr->internal_link_id.to_string () << endl;
+    cout << "lipsin id to RV   " << n_ptr->lipsin_rv.to_string () << endl;
+    cout << "lipsin id to TM   " << n_ptr->lipsin_tm.to_string () << endl;
 
     BOOST_FOREACH(connection_map_pair_t connection_pair, n_ptr->connections) {
       connection_ptr c_ptr = connection_pair.second;
@@ -449,14 +451,6 @@ ns3_application::load (const boost::property_tree::ptree &pt)
 {
 
 }
-
-//string
-//network::get_ip_from_label (string label)
-//{
-//  network_node *nn = find_node (label);
-//  if (nn) return nn->testbed_ip;
-//  return "";
-//}
 
 /* Values for target machines running Linux: */
 #define HWADDR_LABEL   "HWaddr"

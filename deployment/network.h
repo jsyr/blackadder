@@ -105,6 +105,12 @@ struct node
   /* used internally */
   bitvector internal_link_id;
 
+  /* lipsin identifier to forward to rv node */
+  bitvector lipsin_rv;
+
+  /* lipsin identifier to forward to tm node */
+  bitvector lipsin_tm;
+
   void
   load (const boost::property_tree::ptree &pt, struct network &network);
 };

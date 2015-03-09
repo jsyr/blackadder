@@ -52,33 +52,76 @@ create_graph (network &network, network_graph &net_graph)
 }
 
 void
-calculate_forwarding_id (vertex src_v, vertex dst_v, network_graph &net_graph)
+calculate_forwarding_id (vertex src_v, vertex dst_v, vector<vertex> &predecessor_vector, network_graph &net_graph, bitvector &lipsin)
 {
-  size_t i = 0;
-  vector<vertex> p(boost::num_vertices(net_graph));
-  boost::breadth_first_search (net_graph, src_v, boost::visitor (boost::make_bfs_visitor (boost::record_predecessors (&p[0], boost::on_tree_edge ()))));
-  BOOST_FOREACH(vertex v, p) {
-    cout << "predecessor of " << i << " is " << v << endl;
-    i++;
+  vertex predeccesor;
+  node_ptr n;
+
+  /* source node is the same as destination */
+  if (dst_v == src_v) {
+    /* XOR lipsin with dst_v == src_v internal_link_id and return */
+    lipsin ^= net_graph[dst_v]->internal_link_id;
+    return;
+  }
+
+  while (true) {
+    /* XOR lipsin with dst_v internal_link_id */
+    n = net_graph[dst_v];
+    lipsin ^= n->internal_link_id;
+
+    /* find the predeccesor node */
+    predeccesor = predecessor_vector[dst_v];
+    pair<edge, bool> edge_pair = boost::edge (predeccesor, dst_v, net_graph);
+    if (edge_pair.second == false) {
+      /* this should never happen - an edge must always exist */
+      cout << "Fatal: No edge between " << net_graph[predeccesor]->label << " and " << net_graph[dst_v]->label << ". Aborting..." << endl;
+      exit (EXIT_FAILURE);
+    }
+    /* XOR with edge's link_id */
+    lipsin ^= net_graph[edge_pair.first]->link_id;
+
+    /* done */
+    if (predeccesor == src_v) {
+      break;
+    }
+
+    /* move on to the next iteration */
+    dst_v = predeccesor;
   }
 }
 
 void
 calculate_forwarding_ids (network &network, network_graph &net_graph)
 {
+  /* a predecessor vector used by BFS */
+  vector<vertex> predecessor_vector (boost::num_vertices (net_graph));
+
   /* get RV and TM nodes */
   node_ptr rv_node = network.rv_node;
   node_ptr tm_node = network.tm_node;
+
   /* get vertex descriptors for these nodes */
   vertex rv_vertex = (*vertices_map.find (rv_node->label)).second;
   vertex tm_vertex = (*vertices_map.find (tm_node->label)).second;
 
-  /* debugging */
-  calculate_forwarding_id (rv_vertex, tm_vertex, net_graph);
-
   /* for each node in the network, find the shortest path to rv and tm */
   BOOST_FOREACH(node_map_pair_t node_pair, network.nodes) {
+    /* a shared pointer to each node in the network */
     node_ptr src_n_ptr = node_pair.second;
+
+    /* the respective vertex in the boost graph for each node in the network */
+    vertex source_vertex = (*vertices_map.find (src_n_ptr->label)).second;
+
+    /* all weights are 1 so, as boost suggests, I am running a BFS with a predecessor map */
+    boost::breadth_first_search (net_graph, source_vertex, boost::visitor (boost::make_bfs_visitor (boost::record_predecessors (&predecessor_vector[0], boost::on_tree_edge ()))));
+
+    /* calculate lipsin identifier to the rv node - use the predecessor map above */
+    src_n_ptr->lipsin_rv = bitvector (network.link_id_len * 8);
+    calculate_forwarding_id (source_vertex, rv_vertex, predecessor_vector, net_graph, src_n_ptr->lipsin_rv);
+
+    /* calculate lipsin identifier to the tm node - use the predecessor map above */
+    src_n_ptr->lipsin_tm = bitvector (network.link_id_len * 8);
+    calculate_forwarding_id (source_vertex, tm_vertex, predecessor_vector, net_graph, src_n_ptr->lipsin_tm);
   }
 }
 
@@ -91,6 +134,7 @@ print_graph (network_graph &net_graph)
   pair<vertex_iter, vertex_iter> vp;
   pair<out_edge_iter, out_edge_iter> ep;
 
+  cout << "------------------BOOST GRAPH--------------------" << endl;
   for (vp = vertices (net_graph); vp.first != vp.second; ++vp.first) {
     src_v = *vp.first;
     cout << "Node " << net_graph[src_v]->label << " connected to nodes:" << endl;
@@ -101,6 +145,7 @@ print_graph (network_graph &net_graph)
     }
     cout << endl;
   }
+  cout << "-------------------------------------------------" << endl;
 }
 
 int
@@ -165,8 +210,6 @@ main (int argc, char **argv)
   network.load (conf, "xml");
   /* assign Link Identifiers and internal link identifiers */
   network.assign_link_ids ();
-  /* print network to debug */
-  network.print ();
 
   /* discover MAC addresses (when needed) for each connection in the network domain */
   if (!network.is_simulation) if (!no_discover)
@@ -177,17 +220,8 @@ main (int argc, char **argv)
   /* create boost graph using the network constructed above */
   create_graph (network, network_graph);
 
-  /* print boost graph to debug */
-  print_graph (network_graph);
-
   /* calculate forwarding identifiers to the RV and TM */
   calculate_forwarding_ids (network, network_graph);
-
-//  /* calculate the default forwarding identifiers from each node to the domain's Rendezvous Node */
-//  graph.calculateRVFIDs ();
-
-//  /* calculate the default forwarding identifiers from each node to the domain's Topology Manager */
-//  graph.calculateTMFIDs ();
 
   /* write all Click/Blackadder configuration files */
   if (!network.is_simulation)
@@ -234,4 +268,10 @@ main (int argc, char **argv)
   }
 
   if (network.is_simulation) ; // dm.create_ns3_code ();
+
+  /* print boost graph to debug */
+  print_graph (network_graph);
+
+  /* print network to debug */
+  network.print ();
 }
