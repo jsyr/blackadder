@@ -21,7 +21,7 @@
 
 #include "bitvector.h"
 
-bitvector::bitvector (string &x)
+bitvector::bitvector (std::string &x)
 {
   unsigned int i = 0;
   _f0 = 0;
@@ -228,10 +228,10 @@ bitvector::swap (bitvector &x)
   x._data = (d == &_f0 ? &x._f0 : d);
 }
 
-string
+std::string
 bitvector::to_string ()
 {
-  string res;
+  std::string res;
   for (int i = 0; i < size (); i++) {
     if (bitvector::Bit::unspecified_bool_type ((*this)[size () - i - 1])) {
       res += '1';

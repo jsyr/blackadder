@@ -25,8 +25,6 @@
 #include <stdio.h>
 #include <string>
 
-using namespace std;
-
 /**@brief (Deployment Application) stolen from Click's bitvector
  */
 class bitvector
@@ -60,7 +58,7 @@ public:
   /** @brief Construct a Bitvector as a copy of @a x. */
   bitvector (const bitvector &x);
 
-  bitvector (string &x);
+  bitvector (std::string &x);
 
   /** @brief Destroy a Bitvector.
    *
@@ -277,7 +275,7 @@ public:
     return _data;
   }
 
-  string
+  std::string
   to_string ();
 
   //private:

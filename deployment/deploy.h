@@ -14,40 +14,8 @@
 #ifndef DEPLOY_H_
 #define DEPLOY_H_
 
-using namespace std;
-
-#include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/breadth_first_search.hpp>
-
 #include <boost/program_options.hpp>
 
-#include <boost/foreach.hpp>
-
 #include "network.h"
-
-typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, node_ptr, connection_ptr, network> network_graph;
-
-typedef pair<string, connection_ptr> connection_map_pair_t;
-typedef pair<string, node_ptr> node_map_pair_t;
-
-typedef boost::graph_traits<network_graph>::vertex_descriptor vertex;
-typedef boost::graph_traits<network_graph>::edge_descriptor edge;
-typedef boost::graph_traits<network_graph>::vertex_iterator vertex_iter;
-typedef boost::graph_traits<network_graph>::out_edge_iterator out_edge_iter;
-
-/* maps node labels to vertex descriptors in the boost graph */
-map<string, vertex> vertices_map;
-
-void
-create_graph (network &network, network_graph &network_graph);
-
-void
-calculate_forwarding_id (vertex src_v, vertex dst_v, vector<vertex> &predecessor_vector, network_graph &net_graph, bitvector &lipsin);
-
-void
-calculate_forwarding_ids (network &network, network_graph &net_graph);
-
-void
-print_graph (network_graph &net_graph);
 
 #endif /* DEPLOY_H_ */
