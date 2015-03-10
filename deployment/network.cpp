@@ -15,6 +15,9 @@
 
 using namespace std;
 
+/* a global variable: the folder where all configuration files will be stored before deploying blackadder */
+string tmp_conf_folder;
+
 void
 parse_configuration (boost::property_tree::ptree &pt, const string &filename, const string &format)
 {
@@ -59,6 +62,11 @@ parse_configuration (boost::property_tree::ptree &pt, const string &filename, co
     cerr << "unrecognised configuration format (accepted values are xml, json, ini, info)" << endl;
     exit (EXIT_FAILURE);
   }
+
+  /* read the tmp folder where all configuration will be stored before is sent to blackadder nodes */
+  /* not that the machine from which we deploy may not be part of the deployment itself */
+  /* so a global variable will be set - it is not part of the network struct */
+  tmp_conf_folder = pt.get<string> ("tmp_conf_folder");
 }
 
 void
@@ -375,35 +383,42 @@ network::discover_mac_addresses ()
 void
 network::write_click_conf ()
 {
+  /* Click directory path */
+  path tmp_conf_path (tmp_conf_folder);
+
+  if (!boost::filesystem::exists (tmp_conf_path)) {
+    cout << "creating directory " << tmp_conf_path << " to store configuration files before deploying blackadder" << endl;
+    boost::filesystem::create_directory (tmp_conf_path);
+  }
+
+  if (!boost::filesystem::is_directory (tmp_conf_path)) {
+    cerr << tmp_conf_path << " is a regular file. Aborting..." << endl;
+    exit (EXIT_FAILURE);
+  }
+
   /* all Click configuration files will be store locally under /tmp */
   BOOST_FOREACH(node_map_pair_t node_pair, nodes) {
     node_ptr n_ptr = node_pair.second;
 
-    int unique_iface_index = 1;
-    int unique_ip_index = 1;
     map<string, int> unique_ifaces;
     map<string, int> unique_srcips;
     map<string, int>::iterator unique_ifaces_iterator;
     set<string> link_local_entries;
 
-    /* Click directory path */
-    path click_conf_directory_path (n_ptr->conf_home);
+    int unique_iface_index = 1;
+    int unique_ip_index = 1;
 
-    if (!boost::filesystem::is_directory (click_conf_directory_path)) {
-      cerr << click_conf_directory_path << " is a regular file. Aborting..." << endl;
-      exit (EXIT_FALIURE);
+    path click_conf_file_path (tmp_conf_path / (n_ptr->label + ".conf"));
+
+    cout << "writing Click configuration for blackadder node " << n_ptr->label << " at " << click_conf_file_path << endl;
+
+    if (boost::filesystem::exists (click_conf_file_path)) {
+      boost::filesystem::remove (click_conf_file_path);
     }
 
-    /* Click configuration file path */
-    path click_conf_file_path (click_conf_directory_path / n_ptr->label + ".conf");
+    boost::filesystem::ofstream click_conf;
 
-    if (!boost::filesystem::exists (click_conf_directory_path)) {
-      boost::filesystem::create_directory (click_directory_path);
-    }
-
-    boost::filesystem::ofstream click_conf (click_path);
-
-    click_conf.open ((n_ptr->conf_home + "/" + n_ptr->label + ".conf").c_str ());
+    click_conf.open (click_conf_file_path);
 
     BOOST_FOREACH(connection_map_pair_t connection_pair, n_ptr->connections) {
       connection_ptr c_ptr = connection_pair.second;
@@ -574,9 +589,13 @@ network::scp_click_conf ()
 
   BOOST_FOREACH(node_map_pair_t node_pair, nodes) {
     node_ptr n_ptr = node_pair.second;
+
     command = "scp " + n_ptr->conf_home + n_ptr->label + ".conf" + " " + n_ptr->user + "@" + n_ptr->testbed_ip + ":" + n_ptr->conf_home;
+
     cout << command << endl;
+
     scp_command = popen (command.c_str (), "r");
+
     if (scp_command == NULL) {
       cerr << "Failed to scp click configuration file to node " << n_ptr->label << ". Aborting..." << endl;
       exit (EXIT_FAILURE);
