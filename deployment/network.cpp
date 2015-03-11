@@ -21,12 +21,26 @@ string tmp_conf_folder;
 void
 parse_configuration (boost::property_tree::ptree &pt, const string &filename, const string &format)
 {
-  using boost::property_tree::ptree;
+  boost::filesystem::path conf_path (filename);
+  boost::filesystem::ifstream conf_path_stream;
+
+  if (!boost::filesystem::exists (conf_path)) {
+    cerr << "Path " << conf_path << " does not exist. Aborting..." << endl;
+    exit (EXIT_FAILURE);
+  }
+
+  if (!boost::filesystem::is_regular (conf_path)) {
+    cerr << "Path " << conf_path << " is not a regular file. Aborting..." << endl;
+    exit (EXIT_FAILURE);
+  }
+
+  conf_path_stream.open (conf_path);
+
   if (format.compare ("xml") == 0) {
     try {
       // Load the .xml file into the property tree. If reading fails
       // (cannot open file, parse error), an exception is thrown.
-      boost::property_tree::read_xml (filename, pt);
+      read_xml (conf_path_stream, pt);
     } catch (boost::property_tree::xml_parser_error &err) {
       cerr << err.what () << endl;
       exit (EXIT_FAILURE);
@@ -35,7 +49,7 @@ parse_configuration (boost::property_tree::ptree &pt, const string &filename, co
     try {
       // Load the .json file into the property tree. If reading fails
       // (cannot open file, parse error), an exception is thrown.
-      read_json (filename, pt);
+      read_json (conf_path_stream, pt);
     } catch (boost::property_tree::json_parser_error &err) {
       cerr << err.what () << endl;
       exit (EXIT_FAILURE);
@@ -44,7 +58,7 @@ parse_configuration (boost::property_tree::ptree &pt, const string &filename, co
     try {
       // Load the .ini file into the property tree. If reading fails
       // (cannot open file, parse error), an exception is thrown.
-      read_ini (filename, pt);
+      read_ini (conf_path_stream, pt);
     } catch (boost::property_tree::ini_parser_error &err) {
       cerr << err.what () << endl;
       exit (EXIT_FAILURE);
@@ -53,7 +67,7 @@ parse_configuration (boost::property_tree::ptree &pt, const string &filename, co
     try {
       // Load the .info file into the property tree. If reading fails
       // (cannot open file, parse error), an exception is thrown.
-      read_info (filename, pt);
+      read_info (conf_path_stream, pt);
     } catch (boost::property_tree::info_parser_error &err) {
       cerr << err.what () << endl;
       exit (EXIT_FAILURE);
@@ -63,10 +77,18 @@ parse_configuration (boost::property_tree::ptree &pt, const string &filename, co
     exit (EXIT_FAILURE);
   }
 
-  /* read the tmp folder where all configuration will be stored before is sent to blackadder nodes */
+  /* read the folder where all configuration will be temporarily stored before is sent to blackadder nodes */
   /* not that the machine from which we deploy may not be part of the deployment itself */
   /* so a global variable will be set - it is not part of the network struct */
-  tmp_conf_folder = pt.get<string> ("tmp_conf_folder");
+  try {
+    tmp_conf_folder = pt.get<string> ("tmp_conf_folder");
+  } catch (boost::property_tree::ptree_bad_data& err) {
+    cerr << err.what () << endl;
+    exit (EXIT_FAILURE);
+  } catch (boost::property_tree::ptree_bad_path& err) {
+    cerr << "tmp_conf_folder, the path where all configuration files will be temporarily stored, must be defined. Aborting..." << endl;
+    exit (EXIT_FAILURE);
+  }
 }
 
 void
@@ -299,8 +321,10 @@ network::discover_mac_addresses ()
 
   BOOST_FOREACH(node_map_pair_t node_pair, nodes) {
     node_ptr n_ptr = node_pair.second;
+
     BOOST_FOREACH(connection_map_pair_t connection_pair, n_ptr->connections) {
       connection_ptr c_ptr = connection_pair.second;
+
       if (c_ptr->overlay_mode.compare ("Ethernet") == 0) {
 
 	if (mac_addresses.find (c_ptr->src_label + c_ptr->src_if) == mac_addresses.end ()) {
@@ -380,10 +404,10 @@ network::discover_mac_addresses ()
   }
 }
 
+// TODO - add support for ns-3 here
 void
 network::write_click_conf ()
 {
-  /* Click directory path */
   path tmp_conf_path (tmp_conf_folder);
 
   if (!boost::filesystem::exists (tmp_conf_path)) {
@@ -533,8 +557,8 @@ network::write_click_conf ()
     /*add network devices*/
     for (unique_ifaces_iterator = unique_ifaces.begin (); unique_ifaces_iterator != unique_ifaces.end (); unique_ifaces_iterator++) {
       if (n_ptr->running_mode.compare ("user") == 0) {
-	click_conf << "fromdev" << (*unique_ifaces_iterator).second << "::FromDevice(" << (*unique_ifaces_iterator).first << ",METHOD LINUX);" << endl << "todev" << (*unique_ifaces_iterator).second
-	    << "::ToDevice(" << (*unique_ifaces_iterator).first << ",METHOD LINUX);" << endl;
+	click_conf << "fromdev" << (*unique_ifaces_iterator).second << "::FromDevice(" << (*unique_ifaces_iterator).first << ",BURST 8);" << endl << "todev" << (*unique_ifaces_iterator).second
+	    << "::ToDevice(" << (*unique_ifaces_iterator).first << ",BURST 8);" << endl;
       } else {
 	click_conf << "fromdev" << (*unique_ifaces_iterator).second << "::FromDevice(" << (*unique_ifaces_iterator).first << ",BURST 8);" << endl << "todev" << (*unique_ifaces_iterator).second
 	    << "::ToDevice(" << (*unique_ifaces_iterator).first << ",BURST 8);" << endl;
@@ -581,6 +605,89 @@ network::write_click_conf ()
   }
 }
 
+/* Property Writer Functors (oh dear...) */
+
+class graph_property_writer
+{
+public:
+  graph_property_writer (network_graph_ptr net_graph_ptr) :
+      net_graph_ptr (net_graph_ptr)
+  {
+  }
+  void
+  operator() (ostream &out) const
+  {
+    //out << "[link_id_len=\"" << net_graph[boost::graph_bundle]->link_id_len << "\"]";
+  }
+private:
+  network_graph_ptr net_graph_ptr;
+};
+
+class vertex_property_writer
+{
+public:
+  vertex_property_writer (network_graph_ptr net_graph_ptr) :
+      net_graph_ptr (net_graph_ptr)
+  {
+  }
+  template<class Vertex>
+    void
+    operator() (ostream &out, const Vertex& v) const
+    {
+      out << "[label=\"" << (*net_graph_ptr)[v]->label << ",internal_link_id=\"" << (*net_graph_ptr)[v]->internal_link_id.to_string () << "\"]";
+    }
+private:
+  network_graph_ptr net_graph_ptr;
+};
+
+class edge_property_writer
+{
+public:
+  edge_property_writer (network_graph_ptr net_graph_ptr) :
+      net_graph_ptr (net_graph_ptr)
+  {
+  }
+  template<class Edge>
+    void
+    operator() (ostream &out, const Edge& e) const
+    {
+      out << "[link_id=\"" << (*net_graph_ptr)[e]->link_id.to_string () << "\"]";
+    }
+private:
+  network_graph_ptr net_graph_ptr;
+};
+
+void
+network::write_tm_conf ()
+{
+
+  path tmp_conf_path (tmp_conf_folder);
+  boost::filesystem::ofstream tm_conf;
+
+  if (!boost::filesystem::exists (tmp_conf_path)) {
+    cout << "creating directory " << tmp_conf_path << " to store configuration files before deploying blackadder" << endl;
+    boost::filesystem::create_directory (tmp_conf_path);
+  }
+
+  if (!boost::filesystem::is_directory (tmp_conf_path)) {
+    cerr << tmp_conf_path << " is a regular file. Aborting..." << endl;
+    exit (EXIT_FAILURE);
+  }
+
+  path tm_conf_file_path (tmp_conf_path / ("topology.graphml"));
+
+  cout << "writing TM configuration for blackadder node " << tm_node->label << " at " << tm_conf_file_path << endl;
+
+  if (boost::filesystem::exists (tm_conf_file_path)) {
+    boost::filesystem::remove (tm_conf_file_path);
+  }
+
+//  boost::write_graphviz (cout, *net_graph_ptr, vertex_property_writer (this->net_graph_ptr), edge_property_writer (this->net_graph_ptr), graph_property_writer (this->net_graph_ptr));
+
+//  cout << "AAAAAAAAAAAAAAAAAAAAAA" << endl;
+//  cout << (*net_graph_ptr)[boost::graph_bundle]->link_id_len << endl;
+}
+
 void
 network::scp_click_conf ()
 {
@@ -603,6 +710,18 @@ network::scp_click_conf ()
     /* close */
     pclose (scp_command);
   }
+}
+
+void
+network::scp_tm_conf (string tm_conf)
+{
+  FILE *scp_command;
+  string command;
+  command = "scp " + tm_node->conf_home + tm_conf + " " + user + "@" + tm_node->testbed_ip + ":" + tm_node->conf_home;
+  cout << command << endl;
+  scp_command = popen (command.c_str (), "r");
+  /* close */
+  pclose (scp_command);
 }
 
 void
@@ -667,18 +786,6 @@ network::start_click ()
       pclose (ssh_command);
     }
   }
-}
-
-void
-network::scp_tm_conf (string tm_conf)
-{
-  FILE *scp_command;
-  string command;
-  command = "scp " + tm_node->conf_home + tm_conf + " " + user + "@" + tm_node->testbed_ip + ":" + tm_node->conf_home;
-  cout << command << endl;
-  scp_command = popen (command.c_str (), "r");
-  /* close */
-  pclose (scp_command);
 }
 
 void
@@ -771,6 +878,8 @@ network::create_graph ()
 
   map<string, vertex>::iterator vertices_map_iter;
 
+  net_graph_ptr = network_graph_ptr (new network_graph ());
+
   /* iterate over all nodes in net_graph and add respective vertices in the graph*/
   BOOST_FOREACH(node_map_pair_t node_pair, nodes) {
     node_ptr src_n_ptr = node_pair.second;
@@ -778,7 +887,7 @@ network::create_graph ()
     vertices_map_iter = vertices_map.find (src_n_ptr->label);
     if (vertices_map_iter == vertices_map.end ()) {
       /* add the node in the boost graph */
-      src_v = add_vertex (src_n_ptr, net_graph);
+      src_v = add_vertex (src_n_ptr, *net_graph_ptr);
       vertices_map.insert (pair<string, vertex> (src_n_ptr->label, src_v));
     } else {
       src_v = (*vertices_map_iter).second;
@@ -791,13 +900,13 @@ network::create_graph ()
       vertices_map_iter = vertices_map.find (dst_n_ptr->label);
       if (vertices_map_iter == vertices_map.end ()) {
 	/* add the node in the boost graph */
-	dst_v = add_vertex (dst_n_ptr, net_graph);
+	dst_v = add_vertex (dst_n_ptr, *net_graph_ptr);
 	vertices_map.insert (pair<string, vertex> (dst_n_ptr->label, dst_v));
       } else {
 	dst_v = (*vertices_map_iter).second;
       }
       /* add the connection in the boost graph */
-      add_edge (src_v, dst_v, c_ptr, net_graph);
+      add_edge (src_v, dst_v, c_ptr, *net_graph_ptr);
     }
   }
 }
@@ -811,25 +920,25 @@ network::calculate_forwarding_id (vertex src_v, vertex dst_v, vector<vertex> &pr
   /* source node is the same as destination */
   if (dst_v == src_v) {
     /* XOR lipsin with dst_v == src_v internal_link_id and return */
-    lipsin ^= net_graph[dst_v]->internal_link_id;
+    lipsin ^= (*net_graph_ptr)[dst_v]->internal_link_id;
     return;
   }
 
   while (true) {
     /* XOR lipsin with dst_v internal_link_id */
-    n = net_graph[dst_v];
+    n = (*net_graph_ptr)[dst_v];
     lipsin ^= n->internal_link_id;
 
     /* find the predeccesor node */
     predeccesor = predecessor_vector[dst_v];
-    pair<edge, bool> edge_pair = boost::edge (predeccesor, dst_v, net_graph);
+    pair<edge, bool> edge_pair = boost::edge (predeccesor, dst_v, *net_graph_ptr);
     if (edge_pair.second == false) {
       /* this should never happen - an edge must always exist */
-      cout << "Fatal: No edge between " << net_graph[predeccesor]->label << " and " << net_graph[dst_v]->label << ". Aborting..." << endl;
+      cout << "Fatal: No edge between " << (*net_graph_ptr)[predeccesor]->label << " and " << (*net_graph_ptr)[dst_v]->label << ". Aborting..." << endl;
       exit (EXIT_FAILURE);
     }
     /* XOR with edge's link_id */
-    lipsin ^= net_graph[edge_pair.first]->link_id;
+    lipsin ^= (*net_graph_ptr)[edge_pair.first]->link_id;
 
     /* done */
     if (predeccesor == src_v) {
@@ -845,7 +954,7 @@ void
 network::calculate_forwarding_ids ()
 {
   /* a predecessor vector used by BFS */
-  vector<vertex> predecessor_vector (boost::num_vertices (net_graph));
+  vector<vertex> predecessor_vector (boost::num_vertices (*net_graph_ptr));
 
   /* get vertex descriptors for these nodes */
   vertex rv_vertex = (*vertices_map.find (rv_node->label)).second;
@@ -860,7 +969,7 @@ network::calculate_forwarding_ids ()
     vertex source_vertex = (*vertices_map.find (src_n_ptr->label)).second;
 
     /* all weights are 1 so, as boost suggests, I am running a BFS with a predecessor map */
-    boost::breadth_first_search (net_graph, source_vertex, boost::visitor (boost::make_bfs_visitor (boost::record_predecessors (&predecessor_vector[0], boost::on_tree_edge ()))));
+    boost::breadth_first_search (*net_graph_ptr, source_vertex, boost::visitor (boost::make_bfs_visitor (boost::record_predecessors (&predecessor_vector[0], boost::on_tree_edge ()))));
 
     /* calculate lipsin identifier to the rv node - use the predecessor map above */
     src_n_ptr->lipsin_rv = bitvector (link_id_len * 8);
@@ -882,13 +991,13 @@ network::print_graph ()
   pair<out_edge_iter, out_edge_iter> ep;
 
   cout << "------------------BOOST GRAPH--------------------" << endl;
-  for (vp = vertices (net_graph); vp.first != vp.second; ++vp.first) {
+  for (vp = vertices (*net_graph_ptr); vp.first != vp.second; ++vp.first) {
     src_v = *vp.first;
-    cout << "Node " << net_graph[src_v]->label << " connected to nodes:" << endl;
-    for (ep = out_edges (src_v, net_graph); ep.first != ep.second; ++ep.first) {
+    cout << "Node " << (*net_graph_ptr)[src_v]->label << " connected to nodes:" << endl;
+    for (ep = out_edges (src_v, *net_graph_ptr); ep.first != ep.second; ++ep.first) {
       e = *(ep.first);
-      dst_v = target (e, net_graph);
-      cout << net_graph[dst_v]->label << "  ";
+      dst_v = target (e, *net_graph_ptr);
+      cout << (*net_graph_ptr)[dst_v]->label << "  ";
     }
     cout << endl;
   }

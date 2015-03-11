@@ -22,11 +22,14 @@
 
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/breadth_first_search.hpp>
+#include <boost/graph/graphml.hpp>
 
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
 #include <boost/foreach.hpp>
+
+#include <boost/enable_shared_from_this.hpp>
 
 #include <map>
 
@@ -45,6 +48,7 @@ typedef boost::shared_ptr<ns3_application> ns3_application_ptr;
 
 /* type definition for boost adjacency list */
 typedef boost::adjacency_list<boost::vecS, boost::vecS, boost::bidirectionalS, node_ptr, connection_ptr, network_ptr> network_graph;
+typedef boost::shared_ptr<network_graph> network_graph_ptr;
 
 /* type definitions for pairs to use with BOOST_FOREACH macro */
 typedef std::pair<std::string, connection_ptr> connection_map_pair_t;
@@ -65,7 +69,7 @@ void
 parse_configuration (boost::property_tree::ptree &pt, const std::string &filename, const std::string &format);
 
 /* blackadder network */
-struct network
+struct network : boost::enable_shared_from_this<network>
 {
   /* assigned through parsing the configuration file */
   int info_id_len;
@@ -90,7 +94,7 @@ struct network
   std::map<std::string, vertex> vertices_map;
 
   /* a boost bidirectional, directed graph to use throughout blackadder deployment */
-  network_graph net_graph;
+  network_graph_ptr net_graph_ptr;
 
   /* methods for internal structures*/
   void
@@ -117,6 +121,9 @@ struct network
 
   void
   start_click ();
+
+  void
+  write_tm_conf ();
 
   void
   scp_tm_conf (std::string tm_conf);

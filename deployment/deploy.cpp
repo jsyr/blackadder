@@ -62,10 +62,11 @@ main (int argc, char **argv)
 
   /* load the network using the provided configuration file */
   network.load (conf, "xml");
+
   /* assign Link Identifiers and internal link identifiers */
   network.assign_link_ids ();
 
-  /* discover MAC addresses (when needed) for each connection in the network domain */
+  /* discover MAC addresses (when/if needed) for each connection in the network domain */
   if (!network.is_simulation) if (!no_discover) network.discover_mac_addresses ();
   // else
   // network.assign_mac_addresses ();
@@ -77,47 +78,27 @@ main (int argc, char **argv)
   network.calculate_forwarding_ids ();
 
   /* write all Click/Blackadder configuration files */
-  if (!network.is_simulation) network.write_click_conf ();
-  // else
-  // dm.write_ns3_click_conf ();
+  network.write_click_conf ();
 
-  /* copy Click configuration files to remote nodes */
+  /* store the graph in graphml format for the topology manager */
+  network.write_tm_conf ();
+
   if (!network.is_simulation) {
+    /* copy Click configuration files to remote nodes */
     if (!no_copy) network.scp_click_conf ();
+
+    /* copy the .graphml file to the Topology Manager node */
+    if (!no_copy) network.scp_tm_conf ("topology.graphml");
 
     /* start Click using the copied configuration file */
     if (!no_start) network.start_click ();
+
+    /* start the Topology Manager to the remote node */
+    if (!no_start) network.start_tm ();
+  } else {
+    // dm.create_ns3_code ();
+    /* compile and run the ns-3 topology separately */
   }
-
-//  /* set some graph attributes for the topology manager */
-//  igraph_cattribute_GAN_set (&graph.igraph, "FID_LEN", dm.fid_len);
-//  igraph_cattribute_GAS_set (&graph.igraph, "TM", dm.TM_node->label.c_str ());
-//  igraph_cattribute_GAS_set (&graph.igraph, "RV", dm.RV_node->label.c_str ());
-//
-//  igraph_cattribute_GAS_set (&graph.igraph, "TM_MODE", dm.TM_node->running_mode.c_str ());
-//  FILE * outstream_graphml = fopen (string (dm.write_conf + "topology.graphml").c_str (), "w");
-//
-//  /* the following happens if blackadder had been previously deployed from another machine */
-//  /* so the file exists with root permissions */
-//  if (outstream_graphml == NULL) {
-//    cout << "Could not open file " << string (dm.write_conf + "topology.graphml") << "\n";
-//    cout << "Try 'sudo rm " << string (dm.write_conf + "topology.graphml") << "' and re-deploy...\n";
-//    return EXIT_FAILURE;
-//  }
-//
-//  igraph_write_graph_graphml (&graph.igraph, outstream_graphml);
-//  fclose (outstream_graphml);
-
-//  if (!network.is_simulation) {
-//    /* copy the .graphml file to the Topology Manager node */
-//    if (!no_copy) network.scp_tm_conf ("topology.graphml");
-//
-//    /* start the Topology Manager */
-//    if (!no_start) network.start_tm ();
-//  }
-
-  // if (network.is_simulation)
-  // dm.create_ns3_code ();
 
   /* print boost graph to debug */
   network.print_graph ();
