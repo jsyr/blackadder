@@ -68,6 +68,21 @@ typedef boost::filesystem::path path;
 void
 parse_configuration (boost::property_tree::ptree &pt, const std::string &filename, const std::string &format);
 
+/* use network configuration to produce a boost adjacency list */
+void
+create_graph (network_ptr net_ptr);
+
+void
+calculate_forwarding_id (network_graph_ptr net_graph_ptr, vertex src_v, vertex dst_v, std::vector<vertex> &predecessor_vector, bitvector &lipsin);
+
+/* calculate forwarding identifiers to rv and tm nodes for all nodes in the network */
+void
+calculate_forwarding_ids (network_ptr net_ptr);
+
+/* print the network graph */
+void
+print_graph (network_ptr net_ptr);
+
 /* blackadder network */
 struct network : boost::enable_shared_from_this<network>
 {
@@ -89,9 +104,6 @@ struct network : boost::enable_shared_from_this<network>
   node_ptr tm_node;
 
   /* used internally */
-
-  /* maps node labels to vertex descriptors in the boost graph */
-  std::map<std::string, vertex> vertices_map;
 
   /* a boost bidirectional, directed graph to use throughout blackadder deployment */
   network_graph_ptr net_graph_ptr;
@@ -134,23 +146,6 @@ struct network : boost::enable_shared_from_this<network>
   /* print network information */
   void
   print ();
-
-  /* methods for boost graph representation of the network */
-
-  /* use network configuration to produce a boost adjacency list */
-  void
-  create_graph ();
-
-  void
-  calculate_forwarding_id (vertex src_v, vertex dst_v, std::vector<vertex> &predecessor_vector, bitvector &lipsin);
-
-  /* calculate forwarding identifiers to rv and tm nodes for all nodes in the network */
-  void
-  calculate_forwarding_ids ();
-
-  /* print the network graph */
-  void
-  print_graph ();
 };
 
 /* network node */

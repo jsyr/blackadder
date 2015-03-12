@@ -21,10 +21,13 @@ main (int argc, char **argv)
   int ret;
 
   /* a network struct to populate using the configuration file and boost property tree */
-  struct network network;
+  network_ptr net_ptr(new network());
 
   /* name of configuration file */
   string conf;
+
+  /* format of configuration file ("xml","json","ini","info") - default: "xml" */
+  string format = "xml";
 
   bool no_discover = false;
   bool no_copy = false;
@@ -36,6 +39,7 @@ main (int argc, char **argv)
 
   desc.add_options () ("help,h", "Print help message");
   desc.add_options () ("conf,c", boost::program_options::value<string> (&conf)->required (), "Configuration file (mandatory)");
+  desc.add_options () ("format,f", boost::program_options::value<string> (&format), "Configuration file format (xml,json,ini,info) - default: xml");
   desc.add_options () ("no-discover", "Don't auto-discover MAC addresses");
   desc.add_options () ("no-copy", "Don't copy Click and TM conf files to remote nodes");
   desc.add_options () ("no-start", "Don't start Click and TM at remote nodes");
@@ -61,48 +65,48 @@ main (int argc, char **argv)
   }
 
   /* load the network using the provided configuration file */
-  network.load (conf, "xml");
+  net_ptr->load (conf, format);
 
   /* assign Link Identifiers and internal link identifiers */
-  network.assign_link_ids ();
+  net_ptr->assign_link_ids ();
 
   /* discover MAC addresses (when/if needed) for each connection in the network domain */
-  if (!network.is_simulation) if (!no_discover) network.discover_mac_addresses ();
+  if (!net_ptr->is_simulation) if (!no_discover) net_ptr->discover_mac_addresses ();
   // else
   // network.assign_mac_addresses ();
 
   /* create boost graph using the network constructed above */
-  network.create_graph ();
+  create_graph (net_ptr);
 
   /* calculate forwarding identifiers to the RV and TM */
-  network.calculate_forwarding_ids ();
+  calculate_forwarding_ids (net_ptr);
 
   /* write all Click/Blackadder configuration files */
-  network.write_click_conf ();
+  net_ptr->write_click_conf ();
 
   /* store the graph in graphml format for the topology manager */
-  network.write_tm_conf ();
+  net_ptr->write_tm_conf ();
 
-  if (!network.is_simulation) {
+  if (!net_ptr->is_simulation) {
     /* copy Click configuration files to remote nodes */
-    if (!no_copy) network.scp_click_conf ();
+    if (!no_copy) net_ptr->scp_click_conf ();
 
     /* copy the .graphml file to the Topology Manager node */
-    if (!no_copy) network.scp_tm_conf ("topology.graphml");
+    if (!no_copy) net_ptr->scp_tm_conf ("topology.graphml");
 
     /* start Click using the copied configuration file */
-    if (!no_start) network.start_click ();
+    if (!no_start) net_ptr->start_click ();
 
     /* start the Topology Manager to the remote node */
-    if (!no_start) network.start_tm ();
+    if (!no_start) net_ptr->start_tm ();
   } else {
     // dm.create_ns3_code ();
     /* compile and run the ns-3 topology separately */
   }
 
   /* print boost graph to debug */
-  network.print_graph ();
+  print_graph (net_ptr);
 
   /* print network to debug */
-  network.print ();
+  net_ptr->print ();
 }
