@@ -34,5 +34,8 @@ modules.order
 kversion.c
 *.mod.c
 *.mk
-lib/*.in
-lib/*.m4
+*kelem.conf
+*kmain.cc
+*uelem.conf
+*umain.cc
+Kbuild
