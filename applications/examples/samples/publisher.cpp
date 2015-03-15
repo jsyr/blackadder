@@ -45,90 +45,90 @@ int main(int argc, char* argv[]) {
     string prefix_id;
     string bin_id = hex_to_chararray(id);
     string bin_prefix_id = hex_to_chararray(prefix_id);
-    ba->publish_scope(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->publish_scope(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
     prefix_id = "0000000000000000";
     id = "1111111111111111";
     bin_id = hex_to_chararray(id);
     bin_prefix_id = hex_to_chararray(prefix_id);
-    ba->publish_scope(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->publish_scope(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
 
     id = "2222222222222222";
     bin_id = hex_to_chararray(id);
-    ba->publish_scope(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->publish_scope(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
     id = "3333333333333333";
     bin_id = hex_to_chararray(id);
-    ba->publish_scope(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->publish_scope(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
     prefix_id = "00000000000000001111111111111111";
     id = "0111111111111111";
     bin_id = hex_to_chararray(id);
     bin_prefix_id = hex_to_chararray(prefix_id);
-    ba->publish_info(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->publish_info(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
     id = "0222222222222222";
     bin_id = hex_to_chararray(id);
-    ba->publish_info(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->publish_info(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
     id = "0333333333333333";
     bin_id = hex_to_chararray(id);
-    ba->publish_info(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->publish_info(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
     id = "0444444444444444";
     bin_id = hex_to_chararray(id);
-    ba->publish_info(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->publish_info(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
     prefix_id = "00000000000000003333333333333333";
     id = "1111111111111111";
     bin_id = hex_to_chararray(id);
     bin_prefix_id = hex_to_chararray(prefix_id);
-    ba->publish_scope(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->publish_scope(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
     id = "2222222222222222";
     bin_id = hex_to_chararray(id);
-    ba->publish_scope(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->publish_scope(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
     id = "3333333333333333";
     bin_id = hex_to_chararray(id);
-    ba->publish_scope(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->publish_scope(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
     prefix_id = string();
     id = "1111111111111111";
     bin_prefix_id = hex_to_chararray(prefix_id);
     bin_id = hex_to_chararray(id);
-    ba->publish_scope(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->publish_scope(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
     prefix_id = "1111111111111111";
     id = "4444444444444444";
     bin_id = hex_to_chararray(id);
     bin_prefix_id = hex_to_chararray(prefix_id);
-    ba->publish_scope(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->publish_scope(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
     id = "5555555555555555";
     bin_id = hex_to_chararray(id);
-    ba->publish_scope(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->publish_scope(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
     prefix_id = "000000000000000033333333333333333333333333333333";
     id = "1000000000000000";
     bin_id = hex_to_chararray(id);
     bin_prefix_id = hex_to_chararray(prefix_id);
-    ba->publish_info(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->publish_info(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
     id = "2000000000000000";
     bin_id = hex_to_chararray(id);
-    ba->publish_info(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->publish_info(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
     id = "0111111111111110";
     bin_id = hex_to_chararray(id);
-    ba->publish_scope(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->publish_scope(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
     prefix_id = "0000000000000000333333333333333333333333333333330111111111111110";
     id = "0000000000000006";
     bin_id = hex_to_chararray(id);
     bin_prefix_id = hex_to_chararray(prefix_id);
-    ba->publish_info(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->publish_info(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
 
     cout << "sleeping for a while..." << endl;
@@ -138,7 +138,7 @@ int main(int argc, char* argv[]) {
     id = "000000000000000033333333333333333333333333333333";
     bin_id = hex_to_chararray(id);
     bin_prefix_id = hex_to_chararray(prefix_id);
-    ba->publish_scope(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->publish_scope(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
     while (true) {
         Event ev;
@@ -153,7 +153,7 @@ int main(int argc, char* argv[]) {
             case START_PUBLISH:
                 cout << "START_PUBLISH: " << chararray_to_hex(ev.id) << endl;
                 for (int i = 0; i < 1; i++) {
-                    ba->publish_data(ev.id, DOMAIN_LOCAL, NULL, 0, payload, payload_size);
+                    ba->publish_data(ev.id, NODE_LOCAL, NULL, 0, payload, payload_size);
                 }
                 break;
             case STOP_PUBLISH:

@@ -103,7 +103,7 @@ int main(int argc, char* argv[]) {
 
     pthread_create(&event_listener, NULL, event_listener_loop, (void *) ba);
 
-    ba->subscribe_scope(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
+    ba->subscribe_scope(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
 
     pthread_join(event_listener, NULL);
     cout << "disconnecting" << endl;

@@ -29,8 +29,6 @@
 
 #include <boost/foreach.hpp>
 
-#include <boost/enable_shared_from_this.hpp>
-
 #include <map>
 
 #include "bitvector.h"
@@ -84,7 +82,7 @@ void
 print_graph (network_ptr net_ptr);
 
 /* blackadder network */
-struct network : boost::enable_shared_from_this<network>
+struct network
 {
   /* assigned through parsing the configuration file */
   int info_id_len;
@@ -114,7 +112,7 @@ struct network : boost::enable_shared_from_this<network>
 
   /* calculate next link identifier to be assigned */
   void
-  calculate_lid (std::map<std::string, bitvector>& link_identifiers, int index);
+  calculate_lids (std::map<std::string, bitvector>& link_identifiers, int total_ids);
 
   /* assign Link Identifiers and internal link identifiers */
   void

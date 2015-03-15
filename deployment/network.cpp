@@ -33,7 +33,10 @@ public:
   void
   operator() (std::ostream &out) const
   {
-    out << "[link_id_len=\"" << (*net_graph_ptr)[boost::graph_bundle]->link_id_len << "\"]";
+    out << "link_id_len=\"" << (*net_graph_ptr)[boost::graph_bundle]->link_id_len << "\";" << endl;
+    out << "tm_node=\"" << (*net_graph_ptr)[boost::graph_bundle]->tm_node->label << "\";" << endl;
+    out << "rv_node=\"" << (*net_graph_ptr)[boost::graph_bundle]->rv_node->label << "\";" << endl;
+    out << "tm_mode=\"" << (*net_graph_ptr)[boost::graph_bundle]->tm_node->running_mode << "\";" << endl;
   }
 private:
   network_graph_ptr net_graph_ptr;
@@ -391,22 +394,24 @@ network::load (const string &filename, const string &format)
 }
 
 void
-network::calculate_lid (map<string, bitvector>& link_identifiers, int index)
+network::calculate_lids (map<string, bitvector>& link_identifiers, int total_ids)
 {
-  u_int32_t bit_position;
-  u_int32_t number_of_bits = (index / (link_id_len * 8)) + 1;
-  bitvector link_identifier;
-  do {
-    link_identifier = bitvector (link_id_len * 8);
-    for (int i = 0; i < number_of_bits; i++) {
-      /* assign a bit in a random position */
-      bit_position = rand () % (link_id_len * 8);
-      link_identifier[bit_position] = true;
-    }
-    /* eliminate duplicate link identifiers */
-  } while (link_identifiers.find (link_identifier.to_string ()) != link_identifiers.end ());
+  for (int i = 0; i < total_ids; i++) {
+    u_int32_t bit_position;
+    u_int32_t number_of_bits = (i / (link_id_len * 8)) + 1;
+    bitvector link_identifier;
+    do {
+      link_identifier = bitvector (link_id_len * 8);
+      for (int i = 0; i < number_of_bits; i++) {
+	/* assign a bit in a random position */
+	bit_position = rand () % (link_id_len * 8);
+	link_identifier[bit_position] = true;
+      }
+      /* eliminate duplicate link identifiers */
+    } while (link_identifiers.find (link_identifier.to_string ()) != link_identifiers.end ());
 
-  link_identifiers.insert (pair<string, bitvector> (link_identifier.to_string (), link_identifier));
+    link_identifiers.insert (pair<string, bitvector> (link_identifier.to_string (), link_identifier));
+  }
 }
 
 void
@@ -432,9 +437,7 @@ network::assign_link_ids ()
     total_ids += node_pair.second->connections.size ();
   }
 
-  for (int i = 0; i < total_ids; i++) {
-    calculate_lid (link_identifiers, i);
-  }
+  calculate_lids (link_identifiers, total_ids);
 
   link_identifiers_iterator = link_identifiers.begin ();
   BOOST_FOREACH(node_map_pair_t node_pair, nodes) {
@@ -575,7 +578,7 @@ network::discover_mac_addresses ()
   }
 }
 
-// TODO - add support for ns-3 here
+// TODO: ns-3 support
 void
 network::write_click_conf ()
 {
@@ -805,7 +808,7 @@ network::write_tm_conf ()
 
   boost::write_graphviz (tm_conf, *net_graph_ptr, vertex_property_writer (this->net_graph_ptr), edge_property_writer (this->net_graph_ptr), graph_property_writer (this->net_graph_ptr));
 
-  tm_conf.close();
+  tm_conf.close ();
 }
 
 void
@@ -817,7 +820,7 @@ network::scp_click_conf ()
   BOOST_FOREACH(node_map_pair_t node_pair, nodes) {
     node_ptr n_ptr = node_pair.second;
 
-    command = "scp " + n_ptr->conf_home + n_ptr->label + ".conf" + " " + n_ptr->user + "@" + n_ptr->testbed_ip + ":" + n_ptr->conf_home;
+    command = "scp " + tmp_conf_folder + "/" + n_ptr->label + ".conf" + " " + n_ptr->user + "@" + n_ptr->testbed_ip + ":" + n_ptr->conf_home;
 
     cout << command << endl;
 
@@ -837,7 +840,7 @@ network::scp_tm_conf (string tm_conf)
 {
   FILE *scp_command;
   string command;
-  command = "scp " + tm_node->conf_home + tm_conf + " " + user + "@" + tm_node->testbed_ip + ":" + tm_node->conf_home;
+  command = "scp " + tmp_conf_folder + "/" + tm_conf + " " + user + "@" + tm_node->testbed_ip + ":" + tm_node->conf_home;
   cout << command << endl;
   scp_command = popen (command.c_str (), "r");
   /* close */
@@ -866,9 +869,9 @@ network::start_click ()
     }
     pclose (ssh_command);
     if (sudo) {
-      command = "ssh " + user + "@" + n_ptr->testbed_ip + " -t \"sudo " + click_home + "sbin/click-uninstall\"";
+      command = "ssh " + user + "@" + n_ptr->testbed_ip + " -t \"sudo " + click_home + "/sbin/click-uninstall\"";
     } else {
-      command = "ssh " + user + "@" + n_ptr->testbed_ip + " -t \"" + click_home + "sbin/click-uninstall \"";
+      command = "ssh " + user + "@" + n_ptr->testbed_ip + " -t \"" + click_home + "/sbin/click-uninstall \"";
     }
     cout << command << endl;
     ssh_command = popen (command.c_str (), "r");
@@ -880,9 +883,9 @@ network::start_click ()
     /*now start click*/
     if (n_ptr->running_mode.compare ("user") == 0) {
       if (sudo) {
-	command = "ssh " + user + "@" + n_ptr->testbed_ip + " \"sudo " + click_home + "bin/click " + n_ptr->conf_home + n_ptr->label + ".conf > /dev/null 2>&1 &\"";
+	command = "ssh " + user + "@" + n_ptr->testbed_ip + " \"sudo " + click_home + "/bin/click " + n_ptr->conf_home + n_ptr->label + ".conf > /dev/null 2>&1 &\"";
       } else {
-	command = "ssh " + user + "@" + n_ptr->testbed_ip + " \"" + click_home + "bin/click " + n_ptr->conf_home + n_ptr->label + ".conf > /dev/null 2>&1 &\"";
+	command = "ssh " + user + "@" + n_ptr->testbed_ip + " \"" + click_home + "/bin/click " + n_ptr->conf_home + n_ptr->label + ".conf > /dev/null 2>&1 &\"";
       }
       cout << command << endl;
       ssh_command = popen (command.c_str (), "r");
@@ -893,9 +896,9 @@ network::start_click ()
       pclose (ssh_command);
     } else {
       if (sudo) {
-	command = "ssh " + user + "@" + n_ptr->testbed_ip + " \"sudo " + click_home + "sbin/click-install " + n_ptr->conf_home + n_ptr->label + ".conf > /dev/null 2>&1 &\"";
+	command = "ssh " + user + "@" + n_ptr->testbed_ip + " \"sudo " + click_home + "/sbin/click-install " + n_ptr->conf_home + n_ptr->label + ".conf > /dev/null 2>&1 &\"";
       } else {
-	command = "ssh " + user + "@" + n_ptr->testbed_ip + " \"" + click_home + "sbin/click-install " + n_ptr->conf_home + n_ptr->label + ".conf > /dev/null 2>&1 &\"";
+	command = "ssh " + user + "@" + n_ptr->testbed_ip + " \"" + click_home + "/sbin/click-install " + n_ptr->conf_home + n_ptr->label + ".conf > /dev/null 2>&1 &\"";
       }
       cout << command << endl;
       ssh_command = popen (command.c_str (), "r");
@@ -1052,6 +1055,10 @@ node::load (const boost::property_tree::ptree &pt, struct network &network)
       /* if not overriden here, use the global value */
       running_mode = pt.get<string> ("running_mode", network.running_mode);
     }
+    if (!(running_mode.compare ("user") == 0) && !(running_mode.compare ("kernel") == 0)) {
+      cerr << "running_mode must be either user or kernel. Aborting..." << endl;
+      exit (EXIT_FAILURE);
+    }
 
     /* operating_system can be set globally for the whole network */
     if (network.operating_system.compare ("unspecified") == 0) {
@@ -1131,9 +1138,13 @@ connection::reverse (connection_ptr reverse_ptr)
   reverse_ptr->dst_ip = src_ip;
 }
 
+// TODO: ns-3 support
 void
 ns3_application::load (const boost::property_tree::ptree &pt)
 {
 
 }
+
+// TODO: ns-3 support
+// .....
 

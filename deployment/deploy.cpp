@@ -20,8 +20,8 @@ main (int argc, char **argv)
 {
   int ret;
 
-  /* a network struct to populate using the configuration file and boost property tree */
-  network_ptr net_ptr(new network());
+  /* a shared_ptr to a network struct to populate using the configuration file and boost property tree */
+  network_ptr net_ptr (new network ());
 
   /* name of configuration file */
   string conf;
@@ -32,6 +32,7 @@ main (int argc, char **argv)
   bool no_discover = false;
   bool no_copy = false;
   bool no_start = false;
+  bool verbose = false;
 
   boost::program_options::variables_map vm;
 
@@ -43,6 +44,7 @@ main (int argc, char **argv)
   desc.add_options () ("no-discover", "Don't auto-discover MAC addresses");
   desc.add_options () ("no-copy", "Don't copy Click and TM conf files to remote nodes");
   desc.add_options () ("no-start", "Don't start Click and TM at remote nodes");
+  desc.add_options () ("verbose,v", "Print Network and Graph structures");
 
   /* parse command line arguments */
   try {
@@ -56,6 +58,8 @@ main (int argc, char **argv)
     if (vm.count ("no-copy")) no_copy = true;
 
     if (vm.count ("no-start")) no_start = true;
+
+    if (vm.count ("verbose")) verbose = true;
 
     boost::program_options::notify (vm);
 
@@ -72,6 +76,7 @@ main (int argc, char **argv)
 
   /* discover MAC addresses (when/if needed) for each connection in the network domain */
   if (!net_ptr->is_simulation) if (!no_discover) net_ptr->discover_mac_addresses ();
+  // TODO: ns-3 support
   // else
   // network.assign_mac_addresses ();
 
@@ -81,32 +86,42 @@ main (int argc, char **argv)
   /* calculate forwarding identifiers to the RV and TM */
   calculate_forwarding_ids (net_ptr);
 
-  /* write all Click/Blackadder configuration files */
+  /* create all Click/Blackadder configuration files and store them in the tmp_conf_folder (set in the configuration file) */
+  // TODO: ns-3 support
   net_ptr->write_click_conf ();
 
-  /* store the graph in graphml format for the topology manager */
+  /* create the graph in graphviz format for the topology manager and store it in the tmp_conf_folder (set in the configuration file) */
   net_ptr->write_tm_conf ();
 
   if (!net_ptr->is_simulation) {
-    /* copy Click configuration files to remote nodes */
-    if (!no_copy) net_ptr->scp_click_conf ();
 
-    /* copy the .graphml file to the Topology Manager node */
-    if (!no_copy) net_ptr->scp_tm_conf ("topology.graphml");
+    if (!no_copy) {
+      /* copy Click configuration files to remote nodes */
+      net_ptr->scp_click_conf ();
 
-    /* start Click using the copied configuration file */
-    if (!no_start) net_ptr->start_click ();
+      /* copy the .graphml file to the Topology Manager node */
+      net_ptr->scp_tm_conf ("topology.graphml");
+    }
 
-    /* start the Topology Manager to the remote node */
-    if (!no_start) net_ptr->start_tm ();
+    if (!no_start) {
+      /* start Click using the copied configuration file */
+      net_ptr->start_click ();
+
+      /* start the Topology Manager to the remote node */
+      // net_ptr->start_tm ();
+    }
+
   } else {
+    // TODO: ns-3 support
     // dm.create_ns3_code ();
     /* compile and run the ns-3 topology separately */
   }
 
-  /* print boost graph to debug */
-  print_graph (net_ptr);
+  if (verbose) {
+    /* print boost graph */
+    print_graph (net_ptr);
 
-  /* print network to debug */
-  net_ptr->print ();
+    /* print network structure */
+    net_ptr->print ();
+  }
 }
