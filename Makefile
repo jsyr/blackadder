@@ -1,7 +1,7 @@
 # Copyright (C) 2012, Oy L M Ericsson Ab, NomadicLab. All rights reserved.
 
 SUBDIRS1=src lib
-SUBDIRS2=TopologyManager deployment examples/samples
+SUBDIRS2=TopologyManager deployment applications/examples/samples
 SUBDIRS=$(SUBDIRS1) $(SUBDIRS2)
 
 .PHONY: all subdirs $(SUBDIRS) clean distclean install uninstall configure \
