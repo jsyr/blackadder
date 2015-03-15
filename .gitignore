@@ -26,3 +26,13 @@
 *.exe
 *.out
 *.app
+
+*.in
+*.m4
+*.u.d
+modules.order
+kversion.c
+*.mod.c
+*.mk
+lib/*.in
+lib/*.m4
