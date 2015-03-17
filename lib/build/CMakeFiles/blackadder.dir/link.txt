@@ -1,2 +1,0 @@
-/usr/bin/ar cr libblackadder.a  CMakeFiles/core.dir/blackadder.cpp.o CMakeFiles/core.dir/nb_blackadder.cpp.o CMakeFiles/core.dir/bitvector.cpp.o
-/usr/bin/ranlib libblackadder.a
