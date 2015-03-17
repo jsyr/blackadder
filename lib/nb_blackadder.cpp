@@ -12,7 +12,7 @@
  * See LICENSE and COPYING for more details.
  */
 
-#include "nb_blackadder.hpp"
+#include "nb_blackadder.h"
 
 NB_Blackadder* NB_Blackadder::m_pInstance = NULL;
 

@@ -11,14 +11,7 @@
  * See LICENSE and COPYING for more details.
  */
 
-#include <boost/program_options.hpp>
-
-#include <signal.h>
-#include <arpa/inet.h>
-#include <set>
-#include <blackadder.hpp>
-
-#include "tm_graph.h"
+#include "topology-manager.h"
 
 using namespace std;
 
@@ -252,8 +245,12 @@ main (int argc, char* argv[])
     return EXIT_FAILURE;
   }
 
-  /* read the topology */
-  read_topology (net_graph_ptr, topology_file);
+  /* load the network using the provided configuration file (boost property tree) */
+  load_network (net_ptr, topology_file);
+
+//  /* create boost graph using the network constructed above */
+//  create_graph (net_graph_ptr, net_ptr);
+
 
 //    (void) signal(SIGINT, sigfun);
 //    cout << "TM: starting - process ID: " << getpid() << endl;

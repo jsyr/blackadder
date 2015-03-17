@@ -16,7 +16,6 @@
 
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/breadth_first_search.hpp>
-#include <boost/graph/graphviz.hpp>
 
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -25,6 +24,7 @@
 
 #include <map>
 
+#include "params.h"
 #include "bitvector.h"
 #include "network.h"
 
@@ -71,6 +71,7 @@ discover_mac_addresses (network_graph_ptr net_graph_ptr);
 void
 write_click_conf (network_graph_ptr net_graph_ptr, std::string &output_folder);
 
+/* writes configuration (a light boost property tree) for the topology manager */
 void
 write_tm_conf (network_graph_ptr net_graph_ptr, std::string &output_folder);
 
@@ -85,9 +86,5 @@ start_click (network_graph_ptr net_graph_ptr);
 
 void
 start_tm (network_graph_ptr net_graph_ptr);
-
-/* print the network graph */
-void
-print_graph (network_graph_ptr net_graph_ptr);
 
 #endif /* GRAPH_H_ */

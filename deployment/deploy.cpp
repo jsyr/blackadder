@@ -26,20 +26,6 @@ main (int argc, char **argv)
   /* a boost bidirectional, directed graph to use throughout blackadder deployment */
   network_graph_ptr net_graph_ptr (new network_graph (net_ptr));
 
-  /* name of configuration file */
-  string conf;
-
-  /* a global variable: the folder where all configuration files will be stored before deploying blackadder */
-  string output_folder = "/tmp";
-
-  /* format of configuration file ("xml","json","ini","info") - default: "xml" */
-  string format = "xml";
-
-  bool no_discover = false;
-  bool no_copy = false;
-  bool no_start = false;
-  bool verbose = false;
-
   boost::program_options::variables_map vm;
 
   boost::program_options::options_description desc ("blackadder deployment tool options");
@@ -126,10 +112,8 @@ main (int argc, char **argv)
   }
 
   if (verbose) {
-    /* print boost graph */
-    print_graph (net_graph_ptr);
-
     /* print network structure */
+    cout << endl;
     print_network (net_ptr);
   }
 }

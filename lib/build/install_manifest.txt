@@ -1,0 +1,5 @@
+/usr/local/lib/libblackadder.a
+/usr/local/include/blackadder.h
+/usr/local/include/nb_blackadder.h
+/usr/local/include/bitvector.h
+/usr/local/include/blackadder_defs.h

@@ -18,61 +18,6 @@ using namespace std;
 /* maps node labels to vertex descriptors in the boost graph */
 map<std::string, vertex> vertices_map;
 
-/* Property Writer Functors for writing Graphviz graphs (oh dear...) */
-
-class graph_property_writer
-{
-public:
-  graph_property_writer (network_graph_ptr net_graph_ptr) :
-      net_graph_ptr (net_graph_ptr)
-  {
-  }
-  void
-  operator() (std::ostream &out) const
-  {
-    out << "link_id_len=\"" << (*net_graph_ptr)[boost::graph_bundle]->link_id_len << "\";" << endl;
-    out << "tm_node=\"" << (*net_graph_ptr)[boost::graph_bundle]->tm_node->label << "\";" << endl;
-    out << "rv_node=\"" << (*net_graph_ptr)[boost::graph_bundle]->rv_node->label << "\";" << endl;
-    out << "tm_mode=\"" << (*net_graph_ptr)[boost::graph_bundle]->tm_node->running_mode << "\";" << endl;
-  }
-private:
-  network_graph_ptr net_graph_ptr;
-};
-
-class vertex_property_writer
-{
-public:
-  vertex_property_writer (network_graph_ptr net_graph_ptr) :
-      net_graph_ptr (net_graph_ptr)
-  {
-  }
-  template<class Vertex>
-    void
-    operator() (std::ostream &out, const Vertex& v) const
-    {
-      out << "[label=\"" << (*net_graph_ptr)[v]->label << ",internal_link_id=\"" << (*net_graph_ptr)[v]->internal_link_id.to_string () << "\"]";
-    }
-private:
-  network_graph_ptr net_graph_ptr;
-};
-
-class edge_property_writer
-{
-public:
-  edge_property_writer (network_graph_ptr net_graph_ptr) :
-      net_graph_ptr (net_graph_ptr)
-  {
-  }
-  template<class Edge>
-    void
-    operator() (std::ostream &out, const Edge& e) const
-    {
-      out << "[link_id=\"" << (*net_graph_ptr)[e]->link_id.to_string () << "\"]";
-    }
-private:
-  network_graph_ptr net_graph_ptr;
-};
-
 void
 create_graph (network_graph_ptr net_graph_ptr, network_ptr net_ptr)
 {
@@ -567,6 +512,8 @@ void
 write_tm_conf (network_graph_ptr net_graph_ptr, string &output_folder)
 {
 
+  boost::property_tree::ptree pt;
+
   path output_folder_path (output_folder);
   boost::filesystem::ofstream tm_conf;
 
@@ -580,7 +527,7 @@ write_tm_conf (network_graph_ptr net_graph_ptr, string &output_folder)
     exit (EXIT_FAILURE);
   }
 
-  path tm_conf_file_path (output_folder_path / ("topology.graph"));
+  path tm_conf_file_path (output_folder_path / ("topology.cfg"));
 
   cout << "writing TM configuration for blackadder node " << (*net_graph_ptr)[boost::graph_bundle]->tm_node->label << " at " << tm_conf_file_path << endl;
 
@@ -590,7 +537,37 @@ write_tm_conf (network_graph_ptr net_graph_ptr, string &output_folder)
 
   tm_conf.open (tm_conf_file_path);
 
-  boost::write_graphviz (tm_conf, *net_graph_ptr, vertex_property_writer (net_graph_ptr), edge_property_writer (net_graph_ptr), graph_property_writer (net_graph_ptr));
+  /* add global network properties */
+  /* iterate over all vertices in the boost graph */
+  BOOST_FOREACH(vertex v, vertices(*net_graph_ptr)) {
+    boost::property_tree::ptree nodes_pt;
+
+    nodes_pt.add ("label", (*net_graph_ptr)[v]->label);
+    nodes_pt.add ("internal_link_id", (*net_graph_ptr)[v]->internal_link_id.to_string ());
+    nodes_pt.add ("is_rv", (*net_graph_ptr)[v]->is_rv);
+    nodes_pt.add ("is_tm", (*net_graph_ptr)[v]->is_tm);
+
+    pt.add_child("network.nodes.node", nodes_pt);
+  }
+
+  /* iterate over all edges in the boost graph */
+  BOOST_FOREACH(edge e, edges(*net_graph_ptr)) {
+    boost::property_tree::ptree connections_pt;
+
+    connections_pt.add ("src_label", (*net_graph_ptr)[e]->src_label);
+    connections_pt.add ("dst_label", (*net_graph_ptr)[e]->dst_label);
+    connections_pt.add ("link_id", (*net_graph_ptr)[e]->link_id.to_string ());
+
+    pt.add_child("network.connections.connection", connections_pt);
+  }
+
+  /* make the output cuter for debugging */
+  boost::property_tree::xml_writer_settings<char> settings (' ', 4);
+
+  /* write the property tree to the topology.cfg file */
+  boost::property_tree::write_xml (tm_conf, pt, settings);
+
+  if (verbose) boost::property_tree::write_xml (cout, pt, settings);
 
   tm_conf.close ();
 }
@@ -623,7 +600,7 @@ scp_tm_conf (network_graph_ptr net_graph_ptr, string &output_folder)
 {
   FILE *scp_command;
   string command;
-  command = "scp " + output_folder + "/topology.graph" + " " + (*net_graph_ptr)[boost::graph_bundle]->tm_node->user + "@" + (*net_graph_ptr)[boost::graph_bundle]->tm_node->testbed_ip + ":"
+  command = "scp " + output_folder + "/topology.cfg" + " " + (*net_graph_ptr)[boost::graph_bundle]->tm_node->user + "@" + (*net_graph_ptr)[boost::graph_bundle]->tm_node->testbed_ip + ":"
       + (*net_graph_ptr)[boost::graph_bundle]->tm_node->conf_home;
   cout << command << endl;
   scp_command = popen (command.c_str (), "r");
@@ -715,17 +692,11 @@ start_tm (network_graph_ptr net_graph_ptr)
   pclose (ssh_command);
   /*now start the TM*/
   command = "ssh " + (*net_graph_ptr)[boost::graph_bundle]->tm_node->user + "@" + (*net_graph_ptr)[boost::graph_bundle]->tm_node->testbed_ip + " -t \"/home/"
-      + (*net_graph_ptr)[boost::graph_bundle]->tm_node->user + "/blackadder/TopologyManager/tm " + (*net_graph_ptr)[boost::graph_bundle]->tm_node->conf_home + "topology.graph > /dev/null 2>&1 &\"";
+      + (*net_graph_ptr)[boost::graph_bundle]->tm_node->user + "/blackadder/TopologyManager/tm " + (*net_graph_ptr)[boost::graph_bundle]->tm_node->conf_home + "topology.cfg > /dev/null 2>&1 &\"";
   cout << command << endl;
   ssh_command = popen (command.c_str (), "r");
   if (ssh_command == NULL) {
     cerr << "Failed to start Topology Manager at node " << (*net_graph_ptr)[boost::graph_bundle]->tm_node->label << endl;
   }
   pclose (ssh_command);
-}
-
-void
-print_graph (network_graph_ptr net_graph_ptr)
-{
-  boost::write_graphviz (cout, *net_graph_ptr, vertex_property_writer (net_graph_ptr), edge_property_writer (net_graph_ptr), graph_property_writer (net_graph_ptr));
 }

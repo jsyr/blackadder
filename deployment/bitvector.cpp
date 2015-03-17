@@ -21,14 +21,12 @@
 
 #include "bitvector.h"
 
-bitvector::bitvector (std::string &x)
+bitvector::bitvector (std::string &x) : _max (x.length() - 1), _data (&_f0), _f0 (0), _f1 (0)
 {
   unsigned int i = 0;
-  _f0 = 0;
-  _f1 = 0;
-  _data = new uint32_t[x.length ()];
-  _max = x.length () - 1;
-  memset (_data, 0, x.length ());
+
+  if (_max > MAX_INLINE_BIT) resize_to_max (_max, false);
+
   for (i = 0; i < x.length (); i++) {
     if (x.at (i) == '1') {
       (*this)[size () - i - 1] = true;
@@ -233,7 +231,7 @@ bitvector::to_string ()
 {
   std::string res;
   for (int i = 0; i < size (); i++) {
-    if (bitvector::Bit::unspecified_bool_type ((*this)[size () - i - 1])) {
+    if (bitvector::bit::unspecified_bool_type ((*this)[size () - i - 1])) {
       res += '1';
     } else {
       res += '0';

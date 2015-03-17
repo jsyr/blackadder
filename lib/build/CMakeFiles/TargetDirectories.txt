@@ -1,0 +1,2 @@
+/home/parisis/blackadder/lib/build/CMakeFiles/blackadder.dir
+/home/parisis/blackadder/lib/build/CMakeFiles/core.dir

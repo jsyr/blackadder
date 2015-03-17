@@ -14,34 +14,27 @@
 #ifndef TM_IGRAPH_H
 #define TM_IGRAPH_H
 
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/xml_parser.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ini_parser.hpp>
+#include <boost/property_tree/info_parser.hpp>
+
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/breadth_first_search.hpp>
-#include <boost/graph/graphviz.hpp>
 
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
 
-/* blackadder network */
-struct network
-{
-  std::string running_mode;
+#include <boost/foreach.hpp>
 
-  std::string rv_node_label;
-  std::string tm_node_label;
-};
+#include <bitvector.h>
 
-/* a blackadder network node */
-struct node
-{
-  std::string label;
-  std::string internal_link_id;
-};
+#include <blackadder_defs.h>
 
-/* a unidirectional blackadder network connection */
-struct connection
-{
-  std::string link_id;
-};
+struct network;
+struct node;
+struct connection;
 
 /* type definitions for shared_ptr for the structures above*/
 typedef boost::shared_ptr<network> network_ptr;
@@ -56,7 +49,58 @@ typedef boost::shared_ptr<network_graph> network_graph_ptr;
 typedef boost::graph_traits<network_graph>::vertex_descriptor vertex;
 typedef boost::graph_traits<network_graph>::edge_descriptor edge;
 
+/* blackadder network */
+struct network
+{
+  std::map<std::string, node_ptr> nodes;
+
+  node_ptr rv_node;
+  node_ptr tm_node;
+};
+
+/* a blackadder network node */
+struct node
+{
+  /* assigned through parsing the configuration file */
+
+  std::string label;			// parsed
+  bool is_rv;					// parsed
+  bool is_tm;					// parsed
+
+  /* internally connections are unidirectional - they are indexed by the destination node label */
+  std::multimap<std::string, connection_ptr> connections;
+
+  /* used internally */
+  bitvector internal_link_id;
+};
+
+/* a unidirectional blackadder network connection */
+struct connection
+{
+  std::string src_label;	// assigned through parsing the configuration file
+  std::string dst_label;	// assigned through parsing the configuration file
+
+  bitvector link_id;		// used internally
+};
+
+/* free function that parses the configuration file using boost property_tree library */
 void
-read_topology(network_graph_ptr net_graph_ptr, std::string filename);
+parse_configuration (boost::property_tree::ptree &pt, const std::string &filename);
+
+void
+load_network (network_ptr net_ptr, const std::string &filename);
+
+/* print network information */
+void
+print_network (network_ptr net_ptr);
+
+void
+load_node (network_ptr net_ptr, node_ptr n_ptr, const boost::property_tree::ptree &pt);
+
+void
+load_connection (connection_ptr c_ptr, const boost::property_tree::ptree &pt);
+
+void
+read_topology (network_graph_ptr net_graph_ptr, std::string filename);
 
 #endif

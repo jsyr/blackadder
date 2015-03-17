@@ -12,7 +12,7 @@
  * See LICENSE and COPYING for more details.
  */
 
-#include "blackadder.hpp"
+#include "blackadder.h"
 
 #ifdef __FreeBSD__
 #include <sys/event.h>

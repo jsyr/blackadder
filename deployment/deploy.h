@@ -16,6 +16,7 @@
 
 #include <boost/program_options.hpp>
 
+#include "params.h"
 #include "network.h"
 
 #endif /* DEPLOY_H_ */

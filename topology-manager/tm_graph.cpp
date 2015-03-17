@@ -16,171 +16,166 @@
 using namespace std;
 
 void
-read_topology (network_graph_ptr net_graph_ptr, std::string filename)
+parse_configuration (boost::property_tree::ptree &pt, const string &filename)
 {
-  boost::dynamic_properties dp;
+  boost::filesystem::path conf_path (filename);
+  boost::filesystem::ifstream conf_path_stream;
 
-  boost::filesystem::path topology_path (filename);
-  boost::filesystem::ifstream topology_istream;
-
-  if (!boost::filesystem::exists (topology_path)) {
-    cout << "Topology file " << topology_path << " does not exist. Aborting..." << endl;
+  if (!boost::filesystem::exists (conf_path)) {
+    cerr << "Path " << conf_path << " does not exist. Aborting..." << endl;
     exit (EXIT_FAILURE);
   }
 
-  read_graphviz (topology_istream, *net_graph_ptr, dp);
+  if (!boost::filesystem::is_regular (conf_path)) {
+    cerr << "Path " << conf_path << " is not a regular file. Aborting..." << endl;
+    exit (EXIT_FAILURE);
+  }
+
+  conf_path_stream.open (conf_path);
+
+  try {
+    // Load the .xml file into the property tree. If reading fails
+    // (cannot open file, parse error), an exception is thrown.
+    read_xml (conf_path_stream, pt);
+  } catch (boost::property_tree::xml_parser_error &err) {
+    cerr << err.what () << endl;
+    exit (EXIT_FAILURE);
+  }
 }
 
-//Bitvector *tm_graph::calculateFID(string &source, string &destination) {
-//    int vertex_id;
-//    Bitvector *result = new Bitvector(FID_LEN * 8);
-//    igraph_vs_t vs;
-//    igraph_vector_ptr_t res;
-//    igraph_vector_t to_vector;
-//    igraph_vector_t *temp_v;
-//    igraph_integer_t eid;
-//
-//    /*find the vertex id in the reverse index*/
-//    int from = (*reverse_node_index.find(source)).second;
-//    igraph_vector_init(&to_vector, 1);
-//    VECTOR(to_vector)[0] = (*reverse_node_index.find(destination)).second;
-//    /*initialize the sequence*/
-//    igraph_vs_vector(&vs, &to_vector);
-//    /*initialize the vector that contains pointers*/
-//    igraph_vector_ptr_init(&res, 1);
-//    temp_v = (igraph_vector_t *) VECTOR(res)[0];
-//    temp_v = (igraph_vector_t *) malloc(sizeof (igraph_vector_t));
-//    VECTOR(res)[0] = temp_v;
-//    igraph_vector_init(temp_v, 1);
-//    /*run the shortest path algorithm from "from"*/
-//#if IGRAPH_V >= IGRAPH_V_0_6
-//    igraph_get_shortest_paths(&graph, &res, NULL, from, vs, IGRAPH_OUT);
-//#else
-//    igraph_get_shortest_paths(&graph, &res, from, vs, IGRAPH_OUT);
-//#endif
-//    /*check the shortest path to each destination*/
-//    temp_v = (igraph_vector_t *) VECTOR(res)[0];
-//    //click_chatter("Shortest path from %s to %s", igraph_cattribute_VAS(&graph, "NODEID", from), igraph_cattribute_VAS(&graph, "NODEID", VECTOR(*temp_v)[igraph_vector_size(temp_v) - 1]));
-//    /*now let's "or" the FIDs for each link in the shortest path*/
-//    for (int j = 0; j < igraph_vector_size(temp_v) - 1; j++) {
-//#if IGRAPH_V >= IGRAPH_V_0_6
-//        igraph_get_eid(&graph, &eid, VECTOR(*temp_v)[j], VECTOR(*temp_v)[j + 1], true, true);
-//#else
-//        igraph_get_eid(&graph, &eid, VECTOR(*temp_v)[j], VECTOR(*temp_v)[j + 1], true);
-//#endif
-//        //click_chatter("node %s -> node %s", igraph_cattribute_VAS(&graph, "NODEID", VECTOR(*temp_v)[j]), igraph_cattribute_VAS(&graph, "NODEID", VECTOR(*temp_v)[j + 1]));
-//        //click_chatter("link: %s", igraph_cattribute_EAS(&graph, "LID", eid));
-//        string LID(igraph_cattribute_EAS(&graph, "LID", eid), FID_LEN * 8);
-//        for (int k = 0; k < FID_LEN * 8; k++) {
-//            if (LID[k] == '1') {
-//                (*result)[ FID_LEN * 8 - k - 1].operator |=(true);
-//            }
-//        }
-//        //click_chatter("FID of the shortest path: %s", result.to_string().c_str());
-//    }
-//    /*now for all destinations "or" the internal linkID*/
-//    vertex_id = (*reverse_node_index.find(destination)).second;
-//    string iLID(igraph_cattribute_VAS(&graph, "iLID", vertex_id));
-//    //click_chatter("internal link for node %s: %s", igraph_cattribute_VAS(&graph, "NODEID", vertex_id), iLID.c_str());
-//    for (int k = 0; k < FID_LEN * 8; k++) {
-//        if (iLID[k] == '1') {
-//            (*result)[ FID_LEN * 8 - k - 1].operator |=(true);
-//        }
-//    }
-//    igraph_vector_destroy((igraph_vector_t *) VECTOR(res)[0]);
-//    igraph_vector_destroy(&to_vector);
-//    igraph_vector_ptr_destroy_all(&res);
-//    igraph_vs_destroy(&vs);
-//    return result;
-//}
-//
-///*main function for rendezvous*/
-//void tm_graph::calculateFID(set<string> &publishers, set<string> &subscribers, map<string, Bitvector *> &result) {
-//    set<string>::iterator subscribers_it;
-//    set<string>::iterator publishers_it;
-//    string bestPublisher;
-//    Bitvector resultFID(FID_LEN * 8);
-//    Bitvector bestFID(FID_LEN * 8);
-//    unsigned int numberOfHops = 0;
-//    /*first add all publishers to the hashtable with NULL FID*/
-//    for (publishers_it = publishers.begin(); publishers_it != publishers.end(); publishers_it++) {
-//        string publ = *publishers_it;
-//        result.insert(pair<string, Bitvector *>(publ, NULL));
-//    }
-//    for (subscribers_it = subscribers.begin(); subscribers_it != subscribers.end(); subscribers_it++) {
-//        /*for all subscribers calculate the number of hops from all publishers (not very optimized...don't you think?)*/
-//        unsigned int minimumNumberOfHops = UINT_MAX;
-//        for (publishers_it = publishers.begin(); publishers_it != publishers.end(); publishers_it++) {
-//            resultFID.clear();
-//            string str1 = (*publishers_it);
-//            string str2 = (*subscribers_it);
-//            calculateFID(str1, str2, resultFID, numberOfHops);
-//            if (minimumNumberOfHops > numberOfHops) {
-//                minimumNumberOfHops = numberOfHops;
-//                bestPublisher = *publishers_it;
-//                bestFID = resultFID;
-//            }
-//        }
-//        //cout << "best publisher " << bestPublisher << " for subscriber " << (*subscribers_it) << " -- number of hops " << minimumNumberOfHops - 1 << endl;
-//        if ((*result.find(bestPublisher)).second == NULL) {
-//            /*add the publisher to the result*/
-//            //cout << "FID1: " << bestFID.to_string() << endl;
-//            result[bestPublisher] = new Bitvector(bestFID);
-//        } else {
-//            //cout << "/*update the FID for the publisher*/" << endl;
-//            Bitvector *existingFID = (*result.find(bestPublisher)).second;
-//            /*or the result FID*/
-//            *existingFID = *existingFID | bestFID;
-//        }
-//    }
-//}
-//
-//void tm_graph::calculateFID(string &source, string &destination, Bitvector &resultFID, unsigned int &numberOfHops) {
-//    igraph_vs_t vs;
-//    igraph_vector_ptr_t res;
-//    igraph_vector_t to_vector;
-//    igraph_vector_t *temp_v;
-//    igraph_integer_t eid;
-//
-//    /*find the vertex id in the reverse index*/
-//    int from = (*reverse_node_index.find(source)).second;
-//    igraph_vector_init(&to_vector, 1);
-//    VECTOR(to_vector)[0] = (*reverse_node_index.find(destination)).second;
-//    /*initialize the sequence*/
-//    igraph_vs_vector(&vs, &to_vector);
-//    /*initialize the vector that contains pointers*/
-//    igraph_vector_ptr_init(&res, 1);
-//    temp_v = (igraph_vector_t *) VECTOR(res)[0];
-//    temp_v = (igraph_vector_t *) malloc(sizeof (igraph_vector_t));
-//    VECTOR(res)[0] = temp_v;
-//    igraph_vector_init(temp_v, 1);
-//    /*run the shortest path algorithm from "from"*/
-//#if IGRAPH_V >= IGRAPH_V_0_6
-//    igraph_get_shortest_paths(&graph, &res, NULL, from, vs, IGRAPH_OUT);
-//#else
-//    igraph_get_shortest_paths(&graph, &res, from, vs, IGRAPH_OUT);
-//#endif
-//    /*check the shortest path to each destination*/
-//    temp_v = (igraph_vector_t *) VECTOR(res)[0];
-//
-//    /*now let's "or" the FIDs for each link in the shortest path*/
-//    for (int j = 0; j < igraph_vector_size(temp_v) - 1; j++) {
-//#if IGRAPH_V >= IGRAPH_V_0_6
-//        igraph_get_eid(&graph, &eid, VECTOR(*temp_v)[j], VECTOR(*temp_v)[j + 1], true, true);
-//#else
-//        igraph_get_eid(&graph, &eid, VECTOR(*temp_v)[j], VECTOR(*temp_v)[j + 1], true);
-//#endif
-//        Bitvector *lid = (*edge_LID.find(eid)).second;
-//        (resultFID) = (resultFID) | (*lid);
-//    }
-//    numberOfHops = igraph_vector_size(temp_v);
-//
-//    /*now for the destination "or" the internal linkID*/
-//    Bitvector *ilid = (*nodeID_iLID.find(destination)).second;
-//    (resultFID) = (resultFID) | (*ilid);
-//    //cout << "FID of the shortest path: " << resultFID.to_string() << endl;
-//    igraph_vector_destroy((igraph_vector_t *) VECTOR(res)[0]);
-//    igraph_vector_destroy(&to_vector);
-//    igraph_vector_ptr_destroy_all(&res);
-//    igraph_vs_destroy(&vs);
-//}
+void
+load_network (network_ptr net_ptr, const string &filename)
+{
+  // Create an empty property tree object
+  using boost::property_tree::ptree;
+  ptree pt;
+
+  /* parse configuration file */
+  parse_configuration (pt, filename);
+
+  try {
+    BOOST_FOREACH (ptree::value_type & v, pt.get_child ("network.nodes")) {
+      node_ptr n_ptr (new node ());
+      load_node (net_ptr, n_ptr, v.second);
+      pair<map<string, node_ptr>::iterator, bool> ret = net_ptr->nodes.insert (pair<string, node_ptr> (n_ptr->label, n_ptr));
+      if (ret.second == false) {
+	cerr << "Node " << n_ptr->label << " is a duplicate. Aborting..." << endl;
+	exit (EXIT_FAILURE);
+      } else {
+	if (n_ptr->is_rv == true) {
+	  if (net_ptr->rv_node != NULL) {
+	    cerr << "Multiple RV nodes are defined. Aborting..." << endl;
+	    exit (EXIT_FAILURE);
+	  } else {
+	    net_ptr->rv_node = n_ptr;
+	  }
+	}
+	if (n_ptr->is_tm == true) {
+	  if (net_ptr->tm_node != NULL) {
+	    cerr << "Multiple TM nodes are defined. Aborting..." << endl;
+	    exit (EXIT_FAILURE);
+	  } else {
+	    net_ptr->tm_node = n_ptr;
+	  }
+	}
+      }
+    }
+  } catch (boost::property_tree::ptree_bad_data& err) {
+    cerr << err.what () << endl;
+    exit (EXIT_FAILURE);
+  } catch (boost::property_tree::ptree_bad_path& err) {
+    cerr << "No nodes are defined - aborting..." << endl;
+    exit (EXIT_FAILURE);
+  }
+
+  try {
+    BOOST_FOREACH (ptree::value_type & v, pt.get_child ("network.connections")) {
+      connection_ptr c_ptr (new connection ());
+      map<string, node_ptr>::iterator src_iter;
+      load_connection (c_ptr, v.second);
+
+      /* insert connection in src node connection map */
+      /* all connections MUST be unidirectional (that;s the case when the inout file is auto-generated by the deployment tool) */
+      src_iter = net_ptr->nodes.find (c_ptr->src_label);
+      if (src_iter != net_ptr->nodes.end ()) {
+	if (net_ptr->nodes.find (c_ptr->dst_label) != net_ptr->nodes.end ()) {
+	  src_iter->second->connections.insert (pair<string, connection_ptr> (c_ptr->dst_label, c_ptr));
+	} else {
+	  cerr << "Node " << c_ptr->dst_label << " does not exist. Aborting..." << endl;
+	  exit (EXIT_FAILURE);
+	}
+      } else {
+	cerr << "Node " << c_ptr->src_label << " does not exist. Aborting..." << endl;
+	exit (EXIT_FAILURE);
+      }
+    }
+  } catch (boost::property_tree::ptree_bad_data& err) {
+    cerr << err.what () << endl;
+    exit (EXIT_FAILURE);
+  } catch (boost::property_tree::ptree_bad_path& err) {
+    /* this is allowed to support one node deployments for debugging */
+    cerr << "No connections are defined " << endl;
+  }
+
+  if (net_ptr->tm_node == NULL) {
+    cerr << "No TM node is defined. Aborting..." << endl;
+    exit (EXIT_FAILURE);
+  }
+  if (net_ptr->rv_node == NULL) {
+    cerr << "No RV node is defined. Aborting..." << endl;
+    exit (EXIT_FAILURE);
+  }
+}
+
+void
+load_node (network_ptr net_ptr, node_ptr n_ptr, const boost::property_tree::ptree &pt)
+{
+  try {
+    /* mandatory */
+    n_ptr->label = pt.get<string> ("label");
+    if (n_ptr->label.length () != NODEID_LEN) {
+      cerr << "Label " << n_ptr->label << " is not " << NODEID_LEN << " bytes long. Aborting..." << endl;
+      exit (EXIT_FAILURE);
+    }
+
+    /* optional - with default values */
+    n_ptr->is_rv = pt.get<bool> ("is_rv", false);
+    n_ptr->is_tm = pt.get<bool> ("is_tm", false);
+
+//    n_ptr->internal_link_id = bitvector (pt.get<string> ("internal_link_id"));
+
+    bitvector test("00");
+    cout << test.to_string() << endl;
+
+  } catch (boost::property_tree::ptree_bad_data& err) {
+    cerr << err.what () << endl;
+    exit (EXIT_FAILURE);
+  } catch (boost::property_tree::ptree_bad_path& err) {
+    cerr << "missing mandatory node parameter - " << err.what () << endl;
+    exit (EXIT_FAILURE);
+  }
+}
+
+void
+load_connection (connection_ptr c_ptr, const boost::property_tree::ptree &pt)
+{
+  try {
+    /* mandatory */
+    c_ptr->src_label = pt.get<string> ("src_label");
+    c_ptr->dst_label = pt.get<string> ("dst_label");
+
+    if (c_ptr->src_label.compare (c_ptr->dst_label) == 0) {
+      cerr << "src_label and dst_label must not be the same. Aborting..." << endl;
+      exit (EXIT_FAILURE);
+    }
+
+//    c_ptr->link_id = bitvector (pt.get<string> ("link_id"));
+
+  } catch (boost::property_tree::ptree_bad_data& err) {
+    cerr << err.what () << endl;
+    exit (EXIT_FAILURE);
+  } catch (boost::property_tree::ptree_bad_path& err) {
+    cerr << "missing mandatory connection parameter - " << err.what () << endl;
+    exit (EXIT_FAILURE);
+  }
+}
