@@ -144,8 +144,8 @@ load_node (network_ptr net_ptr, node_ptr n_ptr, const boost::property_tree::ptre
 
 //    n_ptr->internal_link_id = bitvector (pt.get<string> ("internal_link_id"));
 
-    bitvector test("00");
-    cout << test.to_string() << endl;
+    bitvector test ("00");
+    cout << test.to_string () << endl;
 
   } catch (boost::property_tree::ptree_bad_data& err) {
     cerr << err.what () << endl;
