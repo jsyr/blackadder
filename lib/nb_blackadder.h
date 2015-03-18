@@ -17,8 +17,8 @@
  * @brief NB_Blackadder non-blocking library.
  */
 
-#ifndef NB_BLACKADDER_HPP
-#define NB_BLACKADDER_HPP
+#ifndef NB_BLACKADDER_H
+#define NB_BLACKADDER_H
 
 #include "blackadder.h"
 
@@ -26,12 +26,12 @@
 #include <queue>
 #include <fcntl.h>
 
-class Event;
+class event;
 
 /**@relates NB_Blackadder
  * @brief a type definition for the pointer to the callback method.
  */
-typedef void (*callbacktype)(Event *);
+typedef void (*callbacktype)(event *);
 
 /**@brief (User Library) This is the wrapper class that makes the service model available to all applications in a Non-Blocking manner. 
  * 
@@ -45,12 +45,14 @@ typedef void (*callbacktype)(Event *);
  * 
  * @note All service request related methods enforce some rules regarding the size of the identifiers so that Blackadder is not confused.
  */
-class NB_Blackadder {
+class nb_blackadder {
 public:
-    /**@brief Destructor: It closes the socket.
+
+  /**@brief Destructor: It closes the socket.
      * 
      */
-    ~NB_Blackadder();
+    ~nb_blackadder();
+
     /**@brief the Instance method is the only way to construct a NB_Blackadder object. It is impossible to construct multiple objects since Instance will return the already constructed one.
      * 
      * Instance will create a new object by calling the protected constructor and assign it to the m_pInstance value ONLY the first time it is called. All other times it will return the m_pInstance pointer.
@@ -58,7 +60,8 @@ public:
      * if it is false, the netlink is created so that it can communicate with Blackadder running in kernel space.
      * @return 
      */
-    static NB_Blackadder* Instance(bool user_space);
+    static nb_blackadder* instance(bool user_space);
+
     /**@brief this method will send a PUBLISH_SCOPE request to Blackadder. <b>It won't block. Instead the request buffer will be put in a queue and the selector thread will be notified to send the request to Blackadder.</b>
      * 
      * If prefix_id is an empty string, the request is about a root scope.
@@ -74,6 +77,7 @@ public:
      * @param str_opt_len the size of the provided bucket of bytes. When the IMPLICIT_RENDEZVOUS strategy is used str_opt_len should be FID_LEN.
      */
     void publish_scope(const string &id, const string &prefix_id, unsigned char strategy, void *str_opt, unsigned int str_opt_len);
+
     /**@brief this method will send a PUBLISH_INFO request to Blackadder. <b>It won't block. Instead the request buffer will be put in a queue and the selector thread will be notified to send the request to Blackadder.</b>
      * 
      * prefix_id CANNOT be an empty string.
@@ -91,6 +95,7 @@ public:
      * @param str_opt_len the size of the provided bucket of bytes. When the IMPLICIT_RENDEZVOUS strategy is used str_opt_len should be FID_LEN.
      */
     void publish_info(const string &id, const string &prefix_id, unsigned char strategy, void *str_opt, unsigned int str_opt_len);
+
     /**@brief this method will send a UNPUBLISH_SCOPE request to Blackadder. <b>It won't block. Instead the request buffer will be put in a queue and the selector thread will be notified to send the request to Blackadder.</b>
      * 
      * If prefix_id is the empty string, the request is about a root scope.
@@ -106,6 +111,7 @@ public:
      * @param str_opt_len the size of the provided bucket of bytes. When the IMPLICIT_RENDEZVOUS strategy is used str_opt_len should be FID_LEN.
      */
     void unpublish_scope(const string &id, const string &prefix_id, unsigned char strategy, void *str_opt, unsigned int str_opt_len);
+
     /**@brief this method will send a UNPUBLISH_INFO request to Blackadder. <b>It won't block. Instead the request buffer will be put in a queue and the selector thread will be notified to send the request to Blackadder.</b>
      * 
      * prefix_id CANNOT be an empty string.
@@ -121,6 +127,7 @@ public:
      * @param str_opt_len the size of the provided bucket of bytes. When the IMPLICIT_RENDEZVOUS strategy is used str_opt_len should be FID_LEN.
      */
     void unpublish_info(const string &id, const string &prefix_id, unsigned char strategy, void *str_opt, unsigned int str_opt_len);
+
     /**@brief this method will send a SUBSCRIBE_SCOPE request to Blackadder. <b>It won't block. Instead the request buffer will be put in a queue and the selector thread will be notified to send the request to Blackadder.</b>
      * 
      * If prefix_id is the empty string, the request is about a root scope.
@@ -138,6 +145,7 @@ public:
      * @param str_opt_len the size of the provided bucket of bytes. When the IMPLICIT_RENDEZVOUS strategy is used str_opt_len should be FID_LEN.
      */
     void subscribe_scope(const string &id, const string &prefix_id, unsigned char strategy, void *str_opt, unsigned int str_opt_len);
+
     /**@brief this method will send a SUBSCRIBE_INFO request to Blackadder. <b>It won't block. Instead the request buffer will be put in a queue and the selector thread will be notified to send the request to Blackadder.</b>
      *
      * 
@@ -156,6 +164,7 @@ public:
      * @param str_opt_len the size of the provided bucket of bytes. When the IMPLICIT_RENDEZVOUS strategy is used str_opt_len should be FID_LEN.
      */
     void subscribe_info(const string &id, const string &prefix_id, unsigned char strategy, void *str_opt, unsigned int str_opt_len);
+
     /**@brief this method will send a UNSUBSCRIBE_SCOPE request to Blackadder. <b>It won't block. Instead the request buffer will be put in a queue and the selector thread will be notified to send the request to Blackadder.</b>
      * 
      * If prefix_id is the empty string, the request is about a root scope.
@@ -171,6 +180,7 @@ public:
      * @param str_opt_len the size of the provided bucket of bytes. When the IMPLICIT_RENDEZVOUS strategy is used str_opt_len should be FID_LEN.
      */
     void unsubscribe_scope(const string &id, const string &prefix_id, unsigned char strategy, void *str_opt, unsigned int str_opt_len);
+
     /**@brief this method will send a UNSUBSCRIBE_INFO request to Blackadder. <b>It won't block. Instead the request buffer will be put in a queue and the selector thread will be notified to send the request to Blackadder.</b>
      *
      * 
@@ -187,6 +197,7 @@ public:
      * @param str_opt_len the size of the provided bucket of bytes. When the IMPLICIT_RENDEZVOUS strategy is used str_opt_len should be FID_LEN.
      */
     void unsubscribe_info(const string &id, const string &prefix_id, unsigned char strategy, void *str_opt, unsigned int str_opt_len);
+
     /**@brief this method will send a PUBLISH_DATA request to Blackadder. <b>It won't block. Instead the request buffer will be put in a queue and the selector thread will be notified to send the request to Blackadder.</b>
      *
      * The data bucket passed to this function is freed within the library. It should be allocated with, e.g., malloc() or calloc() and it must not be freed by the application after it has been published.
@@ -199,38 +210,38 @@ public:
      * @param data_len the size of the published data.
      */
     void publish_data(const string &id, unsigned char strategy, void *str_opt, unsigned int str_opt_len, void *a_data, unsigned int data_len);
-    /**@brief This method will send a disconnect signal to Blackadder. 
-     * 
-     * In user space this is required so that Blackadder can then undo all requests the application has previously sent.
-     * In kernel this is not required since Blackadder can monitor applications.
-     */
-    void disconnect();
+
     /**@brief this method registers a user provided call back with NB_Blackadder
      * 
      * @param t a pointer to the callback function (of type callbacktype)
      */
     void setCallback(callbacktype t);
+
     /**@brief the selector thread execution method.
      * 
      * @param arg
      */
     static void *selector(void *arg);
+
     /**@brief The worker thread execution method.
      * 
      * @param arg
      */
     static void *worker(void *arg);
+
     /**@brief the signal handler.
      * 
      * 
      * @param sig
      */
     static void signal_handler(int sig);
+
     /**@brief This method MUST be called by the application so that the main function will not end before the NB_Blackadder threads end.
      * 
      * it calls pthread_join for the worker and selector threads.
      */
     void join();
+
     /**@brief this method will cancel both worker and selector thread..therefore the join method will unblock..
      */
     void end();
@@ -241,48 +252,62 @@ public:
      * When the socket will unblock again it will send the message to Blackadder.
      */
     static pthread_t selector_thread;
+
     /**@brief a mutex used to synchronize NB_Blackadder threads.
      */
     static pthread_mutex_t selector_mutex;
+
     /**@brief this condition is used for putting a limit to the pending requests.
      */
     static pthread_cond_t queue_overflow_cond;
+
     /**@brief the worker thread (see details).
      * 
      * The worker thread always blocks in the worker_cond. The selector thread signals that condition whenever a new event from Blackadder was read.
      * The worker thread unblocks, reads the event from the event_queue and calls the application-defined callback method.
      */
     static pthread_t worker_thread;
+
     /**@brief a mutex used to synchronize NB_Blackadder threads.
      */
     static pthread_mutex_t worker_mutex;
+
     /**@brief the condition for which the worker thread constantly waits. It is only signaled by the selector thread.
      */
     static pthread_cond_t worker_cond;
+
     /**@brief the set of file descriptions that are registered for reading. Only the netlink socket sock_fd and the pipefds are used.
      */
     static fd_set read_set;
+
     /**@brief the set of file descriptions that are registered for writing. Only the netlink socket sock_fd and the pipefds are used.
      */
     static fd_set write_set;
+
     /**@brief the file descriptors of the bidirectional pipe.
      */
     static int pipe_fds[2];
+
     /**@brief the netlink socket file descriptor.
      */
     static int sock_fd;
+
     /**@brief the queue where all service model related methods put their messages that are later sent to Blackadder by the selector thread.
      */
     static queue <struct msghdr> output_queue;
+
     /**@brief the queue where the selector thread puts all Events sent by Blackadder that are later processed by the worker thread.
      */
-    static queue <Event *> event_queue;
+    static queue <event *> event_queue;
+
     /**@brief a dummy buffer for getting a dummy message from the pipe and interrupting the select() call.
      */
     static char pipe_buf[1];
+
     /**@brief a dummy buffer for peeking to the actual netlink buffers.
      */
     static char fake_buf[1];
+
     /**@brief the Callback function registered with NB_Blackadder. The user must override the default by calling the setCallback() method.
      */
     static callbacktype cf;
@@ -293,10 +318,10 @@ protected:
      * 
      * @param user_space
      */
-    NB_Blackadder(bool user_space);
+    nb_blackadder(bool user_space);
 private:
+
     /**brief push a message in the queue and notify selector thread to send it to Blackadder.
-     * 
      * @param type as passed by a request method.
      * @param id as passed by a request method.
      * @param prefix_id as passed by a request method.
@@ -305,9 +330,11 @@ private:
      * @param str_opt_len as passed by a request method.
      */
     void push(unsigned char type, const string &id, const string &prefix_id, char strategy, void *str_opt, unsigned int str_opt_len);
+
     /**@brief the single static NB_Blackadder object an application can access.
      */
-    static NB_Blackadder* m_pInstance;
+    static nb_blackadder* m_pInstance;
+
     /**@brief the netlink socket source and destination sockaddr_nl structures. They stay the same as long as the application runs.
      */
 #if HAVE_USE_NETLINK

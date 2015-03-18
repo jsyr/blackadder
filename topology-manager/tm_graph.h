@@ -83,6 +83,19 @@ struct connection
   bitvector link_id;		// used internally
 };
 
+struct route_info {
+  unsigned int no_hops;
+  boost::shared_ptr<bitvector> lipsin_id;
+};
+
+/* global routing table is pre-calculated on initialisation */
+typedef std::map<std::string,boost::shared_ptr<route_info> > routing_entry;
+typedef boost::shared_ptr<routing_entry> routing_entry_ptr;
+
+typedef std::map<std::string,routing_entry_ptr> routing_table;
+
+extern routing_table rt_table;
+
 /* free function that parses the configuration file using boost property_tree library */
 void
 parse_configuration (boost::property_tree::ptree &pt, const std::string &filename);
@@ -102,5 +115,9 @@ load_connection (connection_ptr c_ptr, const boost::property_tree::ptree &pt);
 
 void
 read_topology (network_graph_ptr net_graph_ptr, std::string filename);
+
+/* use network configuration to produce a boost adjacency list */
+void
+create_graph (network_graph_ptr net_graph_ptr, network_ptr net_ptr);
 
 #endif

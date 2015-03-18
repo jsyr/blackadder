@@ -15,6 +15,12 @@
 
 using namespace std;
 
+/* maps node labels to vertex descriptors in the boost graph */
+map<std::string, vertex> vertices_map;
+
+/* a global routing table */
+routing_table rt_table;
+
 void
 parse_configuration (boost::property_tree::ptree &pt, const string &filename)
 {
@@ -142,10 +148,8 @@ load_node (network_ptr net_ptr, node_ptr n_ptr, const boost::property_tree::ptre
     n_ptr->is_rv = pt.get<bool> ("is_rv", false);
     n_ptr->is_tm = pt.get<bool> ("is_tm", false);
 
-//    n_ptr->internal_link_id = bitvector (pt.get<string> ("internal_link_id"));
-
-    bitvector test ("00");
-    cout << test.to_string () << endl;
+    string internal_link_id_str = pt.get<string> ("internal_link_id");
+    n_ptr->internal_link_id = bitvector (internal_link_id_str);
 
   } catch (boost::property_tree::ptree_bad_data& err) {
     cerr << err.what () << endl;
@@ -169,7 +173,8 @@ load_connection (connection_ptr c_ptr, const boost::property_tree::ptree &pt)
       exit (EXIT_FAILURE);
     }
 
-//    c_ptr->link_id = bitvector (pt.get<string> ("link_id"));
+    string link_id_str = pt.get<string> ("link_id");
+    c_ptr->link_id = bitvector (link_id_str);
 
   } catch (boost::property_tree::ptree_bad_data& err) {
     cerr << err.what () << endl;
@@ -178,4 +183,110 @@ load_connection (connection_ptr c_ptr, const boost::property_tree::ptree &pt)
     cerr << "missing mandatory connection parameter - " << err.what () << endl;
     exit (EXIT_FAILURE);
   }
+}
+
+void
+create_graph (network_graph_ptr net_graph_ptr, network_ptr net_ptr)
+{
+  typedef std::pair<std::string, connection_ptr> connection_map_pair_t;
+  typedef std::pair<std::string, node_ptr> node_map_pair_t;
+
+  vertex src_v, dst_v;
+
+  map<string, vertex>::iterator vertices_map_iter;
+
+  /* iterate over all nodes in net_graph and add respective vertices in the graph*/
+  BOOST_FOREACH(node_map_pair_t node_pair, net_ptr->nodes) {
+    node_ptr src_n_ptr = node_pair.second;
+    /* check if this node is already added in the network graph */
+    vertices_map_iter = vertices_map.find (src_n_ptr->label);
+    if (vertices_map_iter == vertices_map.end ()) {
+      /* add the node in the boost graph */
+      src_v = add_vertex (src_n_ptr, *net_graph_ptr);
+      vertices_map.insert (pair<string, vertex> (src_n_ptr->label, src_v));
+    } else {
+      src_v = (*vertices_map_iter).second;
+    }
+    /* iterate over all connections in net_graph and add respective edges in the graph */
+    BOOST_FOREACH(connection_map_pair_t connection_pair, src_n_ptr->connections) {
+      connection_ptr c_ptr = connection_pair.second;
+      node_ptr dst_n_ptr = net_ptr->nodes[c_ptr->dst_label];
+      /* check if destination node is a vertex in the boost graph */
+      vertices_map_iter = vertices_map.find (dst_n_ptr->label);
+      if (vertices_map_iter == vertices_map.end ()) {
+	/* add the node in the boost graph */
+	dst_v = add_vertex (dst_n_ptr, *net_graph_ptr);
+	vertices_map.insert (pair<string, vertex> (dst_n_ptr->label, dst_v));
+      } else {
+	dst_v = (*vertices_map_iter).second;
+      }
+      /* add the connection in the boost graph */
+      add_edge (src_v, dst_v, c_ptr, *net_graph_ptr);
+    }
+  }
+}
+//
+//void
+//calculate_forwarding_id (network_graph_ptr net_graph_ptr, vertex src_v, vertex dst_v, vector<vertex> &predecessor_vector, bitvector &lipsin)
+//{
+////  vertex predeccesor;
+////  node_ptr n;
+////
+////  /* source node is the same as destination */
+////  if (dst_v == src_v) {
+////    /* XOR lipsin with dst_v == src_v internal_link_id and return */
+////    lipsin ^= (*net_graph_ptr)[dst_v]->internal_link_id;
+////    return;
+////  }
+////
+////  while (true) {
+////    /* XOR lipsin with dst_v internal_link_id */
+////    n = (*net_graph_ptr)[dst_v];
+////    lipsin ^= n->internal_link_id;
+////
+////    /* find the predeccesor node */
+////    predeccesor = predecessor_vector[dst_v];
+////    pair<edge, bool> edge_pair = boost::edge (predeccesor, dst_v, *net_graph_ptr);
+////    if (edge_pair.second == false) {
+////      /* this should never happen - an edge must always exist */
+////      cout << "Fatal: No edge between " << (*net_graph_ptr)[predeccesor]->label << " and " << (*net_graph_ptr)[dst_v]->label << ". Aborting..." << endl;
+////      exit (EXIT_FAILURE);
+////    }
+////    /* XOR with edge's link_id */
+////    lipsin ^= (*net_graph_ptr)[edge_pair.first]->link_id;
+////
+////    /* done */
+////    if (predeccesor == src_v) {
+////      break;
+////    }
+////
+////    /* move on to the next iteration */
+////    dst_v = predeccesor;
+////  }
+//}
+
+void
+calculate_forwarding_ids (network_graph_ptr net_graph_ptr)
+{
+  /* a predecessor vector used by BFS */
+  vector<vertex> predecessor_vector (boost::num_vertices (*net_graph_ptr));
+
+  /* iterate over all vertices in the boost graph */
+  BOOST_FOREACH(vertex v, vertices(*net_graph_ptr)) {
+    /* all weights are 1 so, as boost suggests, I am running a BFS with a predecessor map */
+    boost::breadth_first_search (*net_graph_ptr, v, boost::visitor (boost::make_bfs_visitor (boost::record_predecessors (&predecessor_vector[0], boost::on_tree_edge ()))));
+
+//    /* calculate lipsin identifier to the target node - use the predecessor map above */
+//    (*net_graph_ptr)[v]->lipsin_rv = bitvector (FID_LEN * 8);
+//    calculate_forwarding_id (net_graph_ptr, v, rv_v, predecessor_vector, (*net_graph_ptr)[v]->lipsin_rv);
+//
+//    (*net_graph_ptr)[v]->lipsin_tm = bitvector (FID_LEN * 8);
+//    calculate_forwarding_id (net_graph_ptr, v, tm_v, predecessor_vector, (*net_graph_ptr)[v]->lipsin_tm);
+  }
+}
+
+void
+calculate_routing_table (network_graph_ptr net_graph_ptr)
+{
+
 }

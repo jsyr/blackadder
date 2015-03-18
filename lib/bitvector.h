@@ -39,17 +39,13 @@ public:
   {
   }
 
+  /* null terminated string */
+  bitvector (const char* x);
+
   /** @brief Construct an all-false Bitvector with @a n elements.
    * @pre @a n >= 0 */
   explicit
   bitvector (int n);
-
-  /** @brief Construct a @a bit-valued length-1 Bitvector. */
-  explicit
-  bitvector (bool bit) :
-      _max (0), _data (&_f0), _f0 (bit), _f1 (0)
-  {
-  }
 
   /** @brief Construct a @a bit-valued length-@a n Bitvector.
    * @pre @a n >= 0 */
