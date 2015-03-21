@@ -12,15 +12,15 @@
  * See LICENSE and COPYING for more details.
  */
 
-#include <nb_blackadder.hpp>
+#include <nb_blackadder.h>
 
 #include <sstream> 
 #include <iostream>
 
-NB_Blackadder *nb_ba;
+nb_blackadder *nb_ba;
 
-void eventHandler(Event *ev) {
-    cout << "Received Event" << endl;
+void eventHandler(event *ev) {
+    cout << "Received event" << endl;
     cout << "Type: " << (int) ev->type << endl;
     cout << "Information Identifier: " << chararray_to_hex(ev->id) << endl;
     char *payload;
@@ -50,13 +50,13 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         int user_or_kernel = atoi(argv[1]);
         if (user_or_kernel == 0) {
-            nb_ba = NB_Blackadder::Instance(true);
+            nb_ba = nb_blackadder::instance(true);
         } else {
-            nb_ba = NB_Blackadder::Instance(false);
+            nb_ba = nb_blackadder::instance(false);
         }
     } else {
         /*By Default I assume blackadder is running in user space*/
-        nb_ba = NB_Blackadder::Instance(true);
+        nb_ba = nb_blackadder::instance(true);
     }
     /*Set the callback function*/
     nb_ba->setCallback(eventHandler);
@@ -74,7 +74,6 @@ int main(int argc, char* argv[]) {
     bin_prefix_id = hex_to_chararray(prefix_id);
     nb_ba->publish_info(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
     nb_ba->join();
-    nb_ba->disconnect();
     delete nb_ba;
     cerr << "exiting..." << endl;
     return 0;

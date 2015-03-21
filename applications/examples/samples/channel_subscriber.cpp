@@ -15,9 +15,9 @@
 #include <signal.h>
 #include <sys/time.h>
 
-#include <blackadder.hpp>
+#include <blackadder.h>
 
-Blackadder *ba;
+blackadder *ba;
 
 int counter = 0;
 struct timezone tz;
@@ -31,11 +31,11 @@ int payload_size = 1000;
 using namespace std;
 
 void *event_listener_loop(void *arg) {
-    Blackadder *ba = (Blackadder *) arg;
+    blackadder *ba = (blackadder *) arg;
     cout << "event_listener_loop started " << endl;
     while (true) {
-        Event ev;
-        ba->getEvent(ev);
+        event ev;
+        ba->get_event(ev);
         if (ev.type == PUBLISHED_DATA) {
             char *p_data = (char *) ev.data;
             //cout<<"received data of size: "<< ev.data_len << endl;
@@ -67,16 +67,12 @@ void *event_listener_loop(void *arg) {
                 break;
             }
         } 
-//        else {
-//            cout << "weird" << endl;
-//        }
     }
     return NULL;
 }
 
 void sigfun(int sig) {
     (void) signal(SIGINT, SIG_DFL);
-    ba->disconnect();
     delete ba;
     exit(0);
 }
@@ -87,13 +83,13 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         int user_or_kernel = atoi(argv[1]);
         if (user_or_kernel == 0) {
-            ba = Blackadder::Instance(true);
+            ba = blackadder::instance(true);
         } else {
-            ba = Blackadder::Instance(false);
+            ba = blackadder::instance(false);
         }
     } else {
         /*By Default I assume blackadder is running in user space*/
-        ba = Blackadder::Instance(true);
+        ba = blackadder::instance(true);
     }
     cout << "Process ID: " << getpid() << endl;
     string id = string(PURSUIT_ID_LEN*2, '1'); // "1111111111111111"
@@ -103,12 +99,11 @@ int main(int argc, char* argv[]) {
 
     pthread_create(&event_listener, NULL, event_listener_loop, (void *) ba);
 
-    ba->subscribe_scope(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
+    ba->subscribe_scope(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
 
     pthread_join(event_listener, NULL);
     cout << "disconnecting" << endl;
     sleep(1);
-    ba->disconnect();
     delete ba;
     return 0;
 }

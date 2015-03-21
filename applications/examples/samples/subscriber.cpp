@@ -12,16 +12,15 @@
  * See LICENSE and COPYING for more details.
  */
 
-#include "blackadder.hpp"
+#include "blackadder.h"
 #include <signal.h>
 
-Blackadder *ba;
+blackadder *ba;
 
 using namespace std;
 
 void sigfun(int sig) {
     (void) signal(SIGINT, SIG_DFL);
-    ba->disconnect();
     delete ba;
     exit(0);
 }
@@ -31,13 +30,13 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         int user_or_kernel = atoi(argv[1]);
         if (user_or_kernel == 0) {
-            ba = Blackadder::Instance(true);
+            ba = blackadder::instance(true);
         } else {
-            ba = Blackadder::Instance(false);
+            ba = blackadder::instance(false);
         }
     } else {
         /*By Default I assume blackadder is running in user space*/
-        ba = Blackadder::Instance(true);
+        ba = blackadder::instance(true);
     }
     cout << "Process ID: " << getpid() << endl;
     string id = "0000000000000000";
@@ -47,8 +46,8 @@ int main(int argc, char* argv[]) {
     cout << "Subscribing to Scope " << prefix_id << id << endl;
     ba->subscribe_scope(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
     while (true) {
-        Event ev;
-        ba->getEvent(ev);
+        event ev;
+        ba->get_event(ev);
         switch (ev.type) {
             case SCOPE_PUBLISHED:
                 cout << "SCOPE_PUBLISHED: " << chararray_to_hex(ev.id) << endl;
@@ -71,7 +70,6 @@ int main(int argc, char* argv[]) {
                 break;
         }
     }
-    ba->disconnect();
     delete ba;
     return 0;
 }

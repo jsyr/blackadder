@@ -329,6 +329,7 @@ main (int argc, char* argv[])
     /* print forwarding base */
     print_forwarding_base (net_graph_ptr);
   }
+
   /* add signal handler to allow for graceful exits */
   (void) signal (SIGINT, signal_handler);
   ba = boost::shared_ptr<blackadder> (blackadder::instance (!is_kernelspace));

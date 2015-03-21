@@ -12,7 +12,7 @@
  * See LICENSE and COPYING for more details.
  */
 
-#include <blackadder.hpp>
+#include <blackadder.h>
 #include <signal.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -23,14 +23,13 @@
 #include <netinet/if_ether.h>
 #endif
 
-Blackadder *ba;
+blackadder *ba;
 int payload_size = 1400;
 char *payload = (char *) malloc(payload_size);
 char *end_payload = (char *) malloc(payload_size);
 
 void sigfun(int /*sig*/) {
     (void) signal(SIGINT, SIG_DFL);
-    ba->disconnect();
     free(payload);
     delete ba;
     exit(0);
@@ -54,13 +53,13 @@ int main(int argc, char* argv[]) {
     if (argc > 2) {
         int user_or_kernel = atoi(argv[2]);
         if (user_or_kernel == 0) {
-            ba = Blackadder::Instance(true);
+            ba = blackadder::instance(true);
         } else {
-            ba = Blackadder::Instance(false);
+            ba = blackadder::instance(false);
         }
     } else {
         /*By Default I assume blackadder is running in user space*/
-        ba = Blackadder::Instance(true);
+        ba = blackadder::instance(true);
     }
     cout << "Process ID: " << getpid() << endl;
     prefix_id = "0000000000000000";
@@ -101,7 +100,6 @@ int main(int argc, char* argv[]) {
 
     free(payload);
     free(end_payload);
-    ba->disconnect();
     delete ba;
     return 0;
 }

@@ -12,9 +12,9 @@
  * See LICENSE and COPYING for more details.
  */
 #include <signal.h>
-#include <blackadder.hpp>
+#include <blackadder.h>
 
-Blackadder *ba;
+blackadder *ba;
 
 int payload_size = 1400;
 char *payload = (char *) malloc(payload_size);
@@ -23,7 +23,7 @@ char *end_payload = (char *) malloc(payload_size);
 using namespace std;
 
 void *event_listener_loop(void *arg) {
-    Blackadder *ba = (Blackadder *) arg;
+    blackadder *ba = (blackadder *) arg;
     string id = "5600000000000000";
     string last_id = "8800000000000000";
     string prefix_id = "AA00000000000000";
@@ -34,8 +34,8 @@ void *event_listener_loop(void *arg) {
 
     string final_bin_alg_id = bin_prefix_id + bin_id;
     string final_last_bin_alg_id = bin_prefix_id + bin_last_id;
-    Event ev;
-    ba->getEvent(ev);
+    event ev;
+    ba->get_event(ev);
     if (ev.type == START_PUBLISH) {
         cout << "start publishing " << endl;
         for (int i = 0; i < 100000; i++) {
@@ -52,7 +52,6 @@ void *event_listener_loop(void *arg) {
 
 void sigfun(int sig) {
     (void) signal(SIGINT, SIG_DFL);
-    ba->disconnect();
     cout << "disconnecting..." << endl;
     free(payload);
     free(end_payload);
@@ -68,13 +67,13 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         int user_or_kernel = atoi(argv[1]);
         if (user_or_kernel == 0) {
-            ba = Blackadder::Instance(true);
+            ba = blackadder::instance(true);
         } else {
-            ba = Blackadder::Instance(false);
+            ba = blackadder::instance(false);
         }
     } else {
         /*By Default I assume blackadder is running in user space*/
-        ba = Blackadder::Instance(true);
+        ba = blackadder::instance(true);
     }
     cout << "Process ID: " << getpid() << endl;
     pthread_create(&event_listener, NULL, event_listener_loop, (void *) ba);
@@ -94,7 +93,6 @@ int main(int argc, char* argv[]) {
     pthread_join(event_listener, NULL);
     cout << "disconnecting" << endl;
     sleep(1);
-    ba->disconnect();
     free(payload);
     free(end_payload);
     delete ba;

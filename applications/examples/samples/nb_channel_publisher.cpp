@@ -12,17 +12,17 @@
  * See LICENSE and COPYING for more details.
  */
 #include <signal.h>
-#include <blackadder.hpp>
-#include <nb_blackadder.hpp>
+#include <blackadder.h>
+#include <nb_blackadder.h>
 
-NB_Blackadder *ba;
+nb_blackadder *ba;
 
 int payload_size = 1400;
 
 
 using namespace std;
 
-void callback(Event *ev) {
+void callback(event *ev) {
     char *payload;
     char *end_payload;
     if (ev->type == START_PUBLISH) {
@@ -48,13 +48,13 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         int user_or_kernel = atoi(argv[1]);
         if (user_or_kernel == 0) {
-            ba = NB_Blackadder::Instance(true);
+            ba = nb_blackadder::instance(true);
         } else {
-            ba = NB_Blackadder::Instance(false);
+            ba = nb_blackadder::instance(false);
         }
     } else {
         /*By Default I assume blackadder is running in user space*/
-        ba = NB_Blackadder::Instance(true);
+        ba = nb_blackadder::instance(true);
     }
     ba->setCallback(callback);
     cout << "Process ID: " << getpid() << endl;
@@ -73,7 +73,6 @@ int main(int argc, char* argv[]) {
 
     sleep(1);
     ba->join();
-    ba->disconnect();
     cerr << "exiting..." << endl;
     return 0;
 }

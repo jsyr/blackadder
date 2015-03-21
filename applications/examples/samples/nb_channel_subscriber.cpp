@@ -15,10 +15,10 @@
 #include <signal.h>
 #include <sys/time.h>
 
-#include <blackadder.hpp>
-#include <nb_blackadder.hpp>
+#include <blackadder.h>
+#include <nb_blackadder.h>
 
-NB_Blackadder *ba;
+nb_blackadder *ba;
 
 int counter = 0;
 struct timezone tz;
@@ -31,7 +31,7 @@ int payload_size = 1400;
 
 using namespace std;
 
-void callback(Event *ev) {
+void callback(event *ev) {
     if (ev->type == PUBLISHED_DATA) {
         char *p_data = (char *) ev->data;
         //cout<<"received data of size: "<< ev->data_len << endl;
@@ -72,13 +72,13 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         int user_or_kernel = atoi(argv[1]);
         if (user_or_kernel == 0) {
-            ba = NB_Blackadder::Instance(true);
+            ba = nb_blackadder::instance(true);
         } else {
-            ba = NB_Blackadder::Instance(false);
+            ba = nb_blackadder::instance(false);
         }
     } else {
         /*By Default I assume blackadder is running in user space*/
-        ba = NB_Blackadder::Instance(true);
+        ba = nb_blackadder::instance(true);
     }
     ba->setCallback(callback);
     cout << "Process ID: " << getpid() << endl;
@@ -91,7 +91,6 @@ int main(int argc, char* argv[]) {
 
     sleep(1);
     ba->join();
-    ba->disconnect();
     cerr << "exiting..." << endl;
     return 0;
 }

@@ -12,9 +12,9 @@
  * See LICENSE and COPYING for more details.
  */
 
-#include <blackadder.hpp>
-#include <nb_blackadder.hpp>
-#include <bitvector.hpp>
+#include <blackadder.h>
+#include <nb_blackadder.h>
+#include <bitvector.h>
 #include <signal.h>
 #include <pthread.h>
 #include <map>
@@ -29,7 +29,7 @@ using namespace std;
 
 class ExpectedFragmentSequence;
 
-NB_Blackadder *ba;
+nb_blackadder *ba;
 string scope_identifier = "0000000000000000";
 string item_identifier = "00000000000000001111111111111111";
 string bin_scope_identifier = hex_to_chararray(scope_identifier);
@@ -59,7 +59,7 @@ bool experiment_started = false;
 class ExpectedFragmentSequence {
 public:
     string firstID;
-    Bitvector fragments_map;
+    bitvector fragments_map;
     int number_of_fragments;
     int fragments_so_far;
     string s_to_p_channel;
@@ -181,7 +181,7 @@ void *timeout_handler(void *arg) {
             i = 0;
             while (i < efs->fragments_map.size()) {
                 required_fragments = 0;
-                while ((Bitvector::Bit::unspecified_bool_type(efs->fragments_map[i]) != false) && (i < efs->fragments_map.size())) {
+                while ((bitvector::bit::unspecified_bool_type(efs->fragments_map[i]) != false) && (i < efs->fragments_map.size())) {
                     i++;
                 }
                 if (i == efs->fragments_map.size()) {
@@ -194,7 +194,7 @@ void *timeout_handler(void *arg) {
                 IDlen = (unsigned char) id.length() / PURSUIT_ID_LEN;
                 memcpy(retransmission_payload, &IDlen, sizeof (IDlen));
                 memcpy(retransmission_payload + sizeof (IDlen), id.c_str(), id.length());
-                while ((Bitvector::Bit::unspecified_bool_type(efs->fragments_map[i]) == false) && (i < efs->fragments_map.size())) {
+                while ((bitvector::bit::unspecified_bool_type(efs->fragments_map[i]) == false) && (i < efs->fragments_map.size())) {
                     required_fragments++;
                     i++;
                 }
@@ -214,7 +214,7 @@ void *timeout_handler(void *arg) {
     return NULL;
 }
 
-void callback(Event *ev) {
+void callback(event *ev) {
     map<string, bool>::iterator iter;
     string hex_id;
     string actual_identifier;
@@ -259,7 +259,7 @@ void callback(Event *ev) {
                     memcpy(&ntohl_number_of_fragments, ev->id.substr(ev->id.length() - PURSUIT_ID_LEN, sizeof (int)).c_str(), sizeof (int));
                     efs->number_of_fragments = ntohl(ntohl_number_of_fragments);
                     efs->fragments_so_far = 1;
-                    efs->fragments_map = Bitvector(efs->number_of_fragments);
+                    efs->fragments_map = bitvector(efs->number_of_fragments);
                     distance = calculate_number_of_fragments(efs->firstID, ev->id) - 1; //e.g. from 0 to 1 distance = 1
                     efs->fragments_map[distance] = true;
                     efs->time_beat = 3;
@@ -271,7 +271,7 @@ void callback(Event *ev) {
                     pthread_create(&timeout_thread, NULL, timeout_handler, NULL);
                 } else {
                     distance = calculate_number_of_fragments(efs->firstID, ev->id) - 1; //e.g. from 0 to 1 distance = 1
-                    if (Bitvector::Bit::unspecified_bool_type(efs->fragments_map[distance]) == false) {
+                    if (bitvector::bit::unspecified_bool_type(efs->fragments_map[distance]) == false) {
                         efs->fragments_so_far++;
                         efs->fragments_map[distance] = true;
                         efs->time_beat = 3;
@@ -282,7 +282,6 @@ void callback(Event *ev) {
                             delete efs;
                             efs = NULL;
                             delete ev;
-                            ba->disconnect();
                             delete ba;
                             break;
                         }
@@ -294,7 +293,7 @@ void callback(Event *ev) {
                 /*A retransmission*/
                 actual_identifier = (*retransmission_channel_map.find(ev->id.substr(0, ev->id.length() - PURSUIT_ID_LEN))).second + ev->id.substr(ev->id.length() - PURSUIT_ID_LEN, PURSUIT_ID_LEN);
                 distance = calculate_number_of_fragments(efs->firstID, actual_identifier) - 1; //e.g. from 0 to 1 distance = 1
-                if (Bitvector::Bit::unspecified_bool_type(efs->fragments_map[distance]) == false) {
+                if (bitvector::bit::unspecified_bool_type(efs->fragments_map[distance]) == false) {
                     efs->fragments_so_far++;
                     efs->fragments_map[distance] = true;
                     efs->time_beat = 3;
@@ -305,7 +304,6 @@ void callback(Event *ev) {
                         delete efs;
                         efs = NULL;
                         delete ev;
-                        ba->disconnect();
                         delete ba;
                         break;
                     }
@@ -325,12 +323,12 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         int user_or_kernel = atoi(argv[1]);
         if (user_or_kernel == 0) {
-            ba = NB_Blackadder::Instance(true);
+            ba = nb_blackadder::instance(true);
         } else {
-            ba = NB_Blackadder::Instance(false);
+            ba = nb_blackadder::instance(false);
         }
     } else {
-        ba = NB_Blackadder::Instance(true);
+        ba = nb_blackadder::instance(true);
     }
     ba->setCallback(callback);
     ba->publish_scope(bin_scope_identifier, string(), DOMAIN_LOCAL, NULL, 0);

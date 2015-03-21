@@ -291,7 +291,7 @@ build_forwarding_base (network_graph_ptr net_graph_ptr)
     vector<vertex> predecessor_vector (boost::num_vertices (*net_graph_ptr));
 
     /* all weights are 1 so, as boost suggests, I am running a BFS with a predecessor map */
-    boost::breadth_first_search (*net_graph_ptr, src_v, boost::visitor (boost::make_bfs_visitor (boost::record_predecessors (&predecessor_vector[0], boost::on_tree_edge ()))));
+    breadth_first_search (*net_graph_ptr, src_v, boost::visitor (boost::make_bfs_visitor (boost::record_predecessors (&predecessor_vector[0], boost::on_tree_edge ()))));
 
     /* iterate over all vertices in the boost graph */
     BOOST_FOREACH(vertex dst_v, vertices(*net_graph_ptr)) {

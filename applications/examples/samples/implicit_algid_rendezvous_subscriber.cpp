@@ -12,11 +12,11 @@
  * See LICENSE and COPYING for more details.
  */
 
-#include "blackadder.hpp"
+#include "blackadder.h"
 #include <signal.h>
 #include <sys/time.h>
 
-Blackadder *ba;
+blackadder *ba;
 int counter = 0;
 struct timezone tz;
 struct timeval start_tv;
@@ -29,7 +29,6 @@ using namespace std;
 
 void sigfun(int) {
     (void) signal(SIGINT, SIG_DFL);
-    ba->disconnect();
     delete ba;
     exit(0);
 }
@@ -40,13 +39,13 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         int user_or_kernel = atoi(argv[1]);
         if (user_or_kernel == 0) {
-            ba = Blackadder::Instance(true);
+            ba = blackadder::instance(true);
         } else {
-            ba = Blackadder::Instance(false);
+            ba = blackadder::instance(false);
         }
     } else {
         /*By Default I assume blackadder is running in user space*/
-        ba = Blackadder::Instance(true);
+        ba = blackadder::instance(true);
     }
     cout << "Process ID: " << getpid() << endl;
     bin_prefix_id = hex_to_chararray(prefix_id);
@@ -57,8 +56,8 @@ int main(int argc, char* argv[]) {
     bin_id = hex_to_chararray(id);
     ba->subscribe_scope(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
     while (true) {
-        Event ev;
-        ba->getEvent(ev);
+        event ev;
+        ba->get_event(ev);
         if (ev.type == PUBLISHED_DATA) {
             char *p_data = (char *) ev.data;
             //cout<<"received data of size: "<< ev.data_len << endl;
@@ -91,7 +90,6 @@ int main(int argc, char* argv[]) {
             }
         }
     }
-    ba->disconnect();
     delete ba;
     return 0;
 }

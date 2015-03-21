@@ -12,9 +12,9 @@
  * See LICENSE and COPYING for more details.
  */
 
-#include <blackadder.hpp>
-#include <nb_blackadder.hpp>
-#include <bitvector.hpp>
+#include <blackadder.h>
+#include <nb_blackadder.h>
+#include <bitvector.h>
 #include <signal.h>
 #include <pthread.h>
 #include <arpa/inet.h>
@@ -26,7 +26,7 @@
 
 using namespace std;
 
-NB_Blackadder *ba;
+nb_blackadder *ba;
 string item_identifier = "00000000000000001111111111111111";
 string bin_item_identifier = hex_to_chararray(item_identifier);
 string algid1, algid2;
@@ -135,7 +135,7 @@ void *publisher_loop(void *arg) {
     return NULL;
 }
 
-void callback(Event *ev) {
+void callback(event *ev) {
     string hex_id;
     string first_fragment;
     IDRange *frags;
@@ -209,12 +209,12 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         int user_or_kernel = atoi(argv[1]);
         if (user_or_kernel == 0) {
-            ba = NB_Blackadder::Instance(true);
+            ba = nb_blackadder::instance(true);
         } else {
-            ba = NB_Blackadder::Instance(false);
+            ba = nb_blackadder::instance(false);
         }
     } else {
-        ba = NB_Blackadder::Instance(true);
+        ba = nb_blackadder::instance(true);
     }
     ba->setCallback(callback);
     p_algid1 = (unsigned char *) malloc(SHA_DIGEST_LENGTH);
@@ -243,7 +243,6 @@ int main(int argc, char* argv[]) {
     /*publish scope with the algorithmically calculated ID ALGID(ALGID(/0000000000000000/1111111111111111))*/
     ba->publish_scope(algid2, bin_item_identifier.substr(0, PURSUIT_ID_LEN), DOMAIN_LOCAL, NULL, 0);
     ba->join();
-    ba->disconnect();
     delete ba;
     return 0;
 }
