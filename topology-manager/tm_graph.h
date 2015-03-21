@@ -63,7 +63,7 @@ struct node
 {
   /* assigned through parsing the configuration file */
 
-  std::string label;			// parsed
+  std::string label;				// parsed
   bool is_rv;					// parsed
   bool is_tm;					// parsed
 
@@ -83,18 +83,36 @@ struct connection
   bitvector link_id;		// used internally
 };
 
-struct route_info {
+typedef boost::shared_ptr<bitvector> lipsin_id_ptr;
+
+/* these must be indexed */
+struct forwarding_entry
+{
+  /* source node label */
+  std::string source;
+
+  /* destination node label */
+  std::string destination;
+
+  /* number of hops */
   unsigned int no_hops;
-  boost::shared_ptr<bitvector> lipsin_id;
+
+  /* lipsin identifier */
+  lipsin_id_ptr lipsin_ptr;
 };
+typedef boost::shared_ptr<forwarding_entry> forwarding_entry_ptr;
+
+typedef std::map<std::string, forwarding_entry_ptr> per_dst_fw_entry;
+typedef std::pair<std::string, forwarding_entry_ptr> per_dst_fw_pair;
+
+typedef boost::shared_ptr<per_dst_fw_entry> per_dst_fw_entry_ptr;
+
+typedef std::map<std::string, per_dst_fw_entry_ptr> per_node_fib_index;
+typedef std::pair<std::string, per_dst_fw_entry_ptr> per_node_fib_pair;
 
 /* global routing table is pre-calculated on initialisation */
-typedef std::map<std::string,boost::shared_ptr<route_info> > routing_entry;
-typedef boost::shared_ptr<routing_entry> routing_entry_ptr;
-
-typedef std::map<std::string,routing_entry_ptr> routing_table;
-
-extern routing_table rt_table;
+extern std::string topology_manager_label;
+extern per_node_fib_index fib;
 
 /* free function that parses the configuration file using boost property_tree library */
 void
@@ -120,4 +138,15 @@ read_topology (network_graph_ptr net_graph_ptr, std::string filename);
 void
 create_graph (network_graph_ptr net_graph_ptr, network_ptr net_ptr);
 
+void
+build_forwarding_base (network_graph_ptr net_graph_ptr);
+
+void
+print_forwarding_base (network_graph_ptr net_graph_ptr);
+
+void
+match_pubs_subs (std::set<std::string> &publishers, std::set<std::string> &subscribers, std::map<std::string, boost::shared_ptr<bitvector> > &result);
+
+void
+shortest_path (std::string &source, std::string &destination, boost::shared_ptr<bitvector> lipsin_ptr);
 #endif

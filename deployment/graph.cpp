@@ -117,14 +117,14 @@ calculate_forwarding_id (network_graph_ptr net_graph_ptr, vertex src_v, vertex d
   /* source node is the same as destination */
   if (dst_v == src_v) {
     /* XOR lipsin with dst_v == src_v internal_link_id and return */
-    lipsin ^= (*net_graph_ptr)[dst_v]->internal_link_id;
+    lipsin |= (*net_graph_ptr)[dst_v]->internal_link_id;
     return;
   }
 
   while (true) {
     /* XOR lipsin with dst_v internal_link_id */
     n = (*net_graph_ptr)[dst_v];
-    lipsin ^= n->internal_link_id;
+    lipsin |= n->internal_link_id;
 
     /* find the predeccesor node */
     predeccesor = predecessor_vector[dst_v];
@@ -135,7 +135,7 @@ calculate_forwarding_id (network_graph_ptr net_graph_ptr, vertex src_v, vertex d
       exit (EXIT_FAILURE);
     }
     /* XOR with edge's link_id */
-    lipsin ^= (*net_graph_ptr)[edge_pair.first]->link_id;
+    lipsin |= (*net_graph_ptr)[edge_pair.first]->link_id;
 
     /* done */
     if (predeccesor == src_v) {

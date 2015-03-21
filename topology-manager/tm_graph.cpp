@@ -16,10 +16,13 @@
 using namespace std;
 
 /* maps node labels to vertex descriptors in the boost graph */
-map<std::string, vertex> vertices_map;
+map<string, vertex> vertices_map;
 
-/* a global routing table */
-routing_table rt_table;
+/* forwarding information base for the whole network */
+per_node_fib_index fib;
+
+/* label of the topology manager */
+string topology_manager_label;
 
 void
 parse_configuration (boost::property_tree::ptree &pt, const string &filename)
@@ -224,69 +227,129 @@ create_graph (network_graph_ptr net_graph_ptr, network_ptr net_ptr)
       add_edge (src_v, dst_v, c_ptr, *net_graph_ptr);
     }
   }
+  topology_manager_label = (*net_graph_ptr)[boost::graph_bundle]->tm_node->label;
 }
-//
-//void
-//calculate_forwarding_id (network_graph_ptr net_graph_ptr, vertex src_v, vertex dst_v, vector<vertex> &predecessor_vector, bitvector &lipsin)
-//{
-////  vertex predeccesor;
-////  node_ptr n;
-////
-////  /* source node is the same as destination */
-////  if (dst_v == src_v) {
-////    /* XOR lipsin with dst_v == src_v internal_link_id and return */
-////    lipsin ^= (*net_graph_ptr)[dst_v]->internal_link_id;
-////    return;
-////  }
-////
-////  while (true) {
-////    /* XOR lipsin with dst_v internal_link_id */
-////    n = (*net_graph_ptr)[dst_v];
-////    lipsin ^= n->internal_link_id;
-////
-////    /* find the predeccesor node */
-////    predeccesor = predecessor_vector[dst_v];
-////    pair<edge, bool> edge_pair = boost::edge (predeccesor, dst_v, *net_graph_ptr);
-////    if (edge_pair.second == false) {
-////      /* this should never happen - an edge must always exist */
-////      cout << "Fatal: No edge between " << (*net_graph_ptr)[predeccesor]->label << " and " << (*net_graph_ptr)[dst_v]->label << ". Aborting..." << endl;
-////      exit (EXIT_FAILURE);
-////    }
-////    /* XOR with edge's link_id */
-////    lipsin ^= (*net_graph_ptr)[edge_pair.first]->link_id;
-////
-////    /* done */
-////    if (predeccesor == src_v) {
-////      break;
-////    }
-////
-////    /* move on to the next iteration */
-////    dst_v = predeccesor;
-////  }
-//}
 
 void
-calculate_forwarding_ids (network_graph_ptr net_graph_ptr)
+calculate_forwarding_id (network_graph_ptr net_graph_ptr, vertex src_v, vertex dst_v, vector<vertex> &predecessor_vector, forwarding_entry_ptr fw_ptr)
 {
-  /* a predecessor vector used by BFS */
-  vector<vertex> predecessor_vector (boost::num_vertices (*net_graph_ptr));
+  vertex predeccesor;
+  node_ptr n;
 
-  /* iterate over all vertices in the boost graph */
-  BOOST_FOREACH(vertex v, vertices(*net_graph_ptr)) {
-    /* all weights are 1 so, as boost suggests, I am running a BFS with a predecessor map */
-    boost::breadth_first_search (*net_graph_ptr, v, boost::visitor (boost::make_bfs_visitor (boost::record_predecessors (&predecessor_vector[0], boost::on_tree_edge ()))));
+  /* initialise forwarding entry */
+  fw_ptr->source = (*net_graph_ptr)[src_v]->label;
+  fw_ptr->destination = (*net_graph_ptr)[dst_v]->label;
+  fw_ptr->no_hops = 0;
+  fw_ptr->lipsin_ptr.reset (new bitvector (FID_LEN * 8));
 
-//    /* calculate lipsin identifier to the target node - use the predecessor map above */
-//    (*net_graph_ptr)[v]->lipsin_rv = bitvector (FID_LEN * 8);
-//    calculate_forwarding_id (net_graph_ptr, v, rv_v, predecessor_vector, (*net_graph_ptr)[v]->lipsin_rv);
-//
-//    (*net_graph_ptr)[v]->lipsin_tm = bitvector (FID_LEN * 8);
-//    calculate_forwarding_id (net_graph_ptr, v, tm_v, predecessor_vector, (*net_graph_ptr)[v]->lipsin_tm);
+  /* source node is the same as destination */
+  if (dst_v == src_v) {
+
+    /* XOR lipsin with dst_v == src_v internal_link_id and return */
+    (*fw_ptr->lipsin_ptr) |= (*net_graph_ptr)[dst_v]->internal_link_id;
+
+    /* internal forwarding is NOT considered a hop */
+    return;
+  }
+
+  while (true) {
+    /* XOR lipsin with dst_v internal_link_id */
+    n = (*net_graph_ptr)[dst_v];
+    (*fw_ptr->lipsin_ptr) |= n->internal_link_id;
+
+    /* find the predeccesor node */
+    predeccesor = predecessor_vector[dst_v];
+    pair<edge, bool> edge_pair = boost::edge (predeccesor, dst_v, *net_graph_ptr);
+    if (edge_pair.second == false) {
+      /* this should never happen - an edge must always exist */
+      cout << "Fatal: No edge between " << (*net_graph_ptr)[predeccesor]->label << " and " << (*net_graph_ptr)[dst_v]->label << ". Aborting..." << endl;
+      exit (EXIT_FAILURE);
+    }
+    /* XOR with edge's link_id */
+    (*fw_ptr->lipsin_ptr) |= (*net_graph_ptr)[edge_pair.first]->link_id;
+    fw_ptr->no_hops++;
+
+    /* done */
+    if (predeccesor == src_v) {
+      break;
+    }
+
+    /* move on to the next iteration */
+    dst_v = predeccesor;
   }
 }
 
 void
-calculate_routing_table (network_graph_ptr net_graph_ptr)
+build_forwarding_base (network_graph_ptr net_graph_ptr)
 {
+  /* iterate over all vertices in the boost graph */
+  BOOST_FOREACH(vertex src_v, vertices(*net_graph_ptr)) {
+    /* create a map to store all forwarding_entry structs from this node to all nodes */
+    per_dst_fw_entry_ptr dst_fw_entry_ptr (new per_dst_fw_entry ());
 
+    /* a predecessor vector used by BFS */
+    vector<vertex> predecessor_vector (boost::num_vertices (*net_graph_ptr));
+
+    /* all weights are 1 so, as boost suggests, I am running a BFS with a predecessor map */
+    boost::breadth_first_search (*net_graph_ptr, src_v, boost::visitor (boost::make_bfs_visitor (boost::record_predecessors (&predecessor_vector[0], boost::on_tree_edge ()))));
+
+    /* iterate over all vertices in the boost graph */
+    BOOST_FOREACH(vertex dst_v, vertices(*net_graph_ptr)) {
+      forwarding_entry_ptr fw_ptr (new forwarding_entry ());
+      calculate_forwarding_id (net_graph_ptr, src_v, dst_v, predecessor_vector, fw_ptr);
+      dst_fw_entry_ptr->insert (per_dst_fw_pair ((*net_graph_ptr)[dst_v]->label, fw_ptr));
+    }
+
+    /* add to fib */
+    fib.insert (per_node_fib_pair ((*net_graph_ptr)[src_v]->label, dst_fw_entry_ptr));
+  }
+}
+
+void
+print_forwarding_base (network_graph_ptr net_graph_ptr)
+{
+  cout << "|-----------------------------------FORWARDING INFORMATION BASE-----------------------------------|" << endl;
+  /* iterate over all vertices in the boost graph */
+  BOOST_FOREACH(vertex src_v, vertices(*net_graph_ptr)) {
+    /* iterate over all vertices in the boost graph */
+    BOOST_FOREACH(vertex dst_v, vertices(*net_graph_ptr)) {
+      forwarding_entry_ptr fw_ptr = (*(*fib.find ((*net_graph_ptr)[src_v]->label)).second->find ((*net_graph_ptr)[dst_v]->label)).second;
+      cout << (*net_graph_ptr)[src_v]->label << " --> " << (*net_graph_ptr)[dst_v]->label << ", " << fw_ptr->lipsin_ptr->to_string () << ", " << fw_ptr->no_hops << endl;
+    }
+  }
+  cout << "|-------------------------------------------------------------------------------------------------|" << endl;
+}
+
+void
+match_pubs_subs (set<string> &publishers, set<string> &subscribers, map<string, boost::shared_ptr<bitvector> > &result)
+{
+  /* initialise all lipsin identifier pointers in the result map */
+  BOOST_FOREACH(string publisher, publishers) {
+    boost::shared_ptr<bitvector> lipsin_ptr;
+    result.insert (pair<string, boost::shared_ptr<bitvector> > (publisher, lipsin_ptr));
+  }
+
+  BOOST_FOREACH(string subscriber, subscribers) {
+
+    string best_publisher;
+    boost::shared_ptr<bitvector> best_lipsin_ptr;
+    unsigned int no_hops = UINT_MAX;
+
+    BOOST_FOREACH(string publisher, publishers) {
+      forwarding_entry_ptr fw_ptr = (*(*fib.find (publisher)).second->find (subscriber)).second;
+      if(fw_ptr->no_hops < no_hops) {
+	best_publisher = publisher;
+	best_lipsin_ptr = fw_ptr->lipsin_ptr;
+	no_hops = fw_ptr->no_hops;
+      }
+    }
+    (*(*result.find(best_publisher)).second) |= (*best_lipsin_ptr);
+  }
+}
+
+void
+shortest_path (string &source, string &destination, boost::shared_ptr<bitvector> lipsin_ptr)
+{
+  forwarding_entry_ptr fw_ptr = (*(*fib.find (source)).second->find (destination)).second;
+  lipsin_ptr = fw_ptr->lipsin_ptr;
 }

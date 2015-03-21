@@ -50,6 +50,7 @@ handle_match_pub_sub_request (char *match_request, unsigned char request_type, u
   unsigned char no_ids, id_len, response_type;
   set<string> publishers, subscribers, ids;
 
+  /* will contain all publishers with a NULL or not NULL lipsin identifier to one or more subscribers */
   map<string, boost::shared_ptr<bitvector> > result;
 
   boost::shared_ptr<bitvector> lipsin_to_dst;
@@ -93,16 +94,24 @@ handle_match_pub_sub_request (char *match_request, unsigned char request_type, u
   }
   cout << endl;
 
+  match_pubs_subs (publishers, subscribers, result);
+
   /*notify publishers*/
   BOOST_FOREACH(result_map_iter result_pair, result) {
     char *response, *temp_response;
-    string destination = result_pair.first;
+
+    /* publisher to be notified */
+    string publisher = result_pair.first;
+
+    /* lipsin identifier to be communicated to the publisher */
     boost::shared_ptr<bitvector> lipsin_ptr = result_pair.second;
 
     if (!lipsin_ptr) {
+      /* if shared pointer to lipsin identifier is NULL, publish STOP_PUBLISH */
       response_size = sizeof(no_ids) + ((unsigned int) no_ids) * sizeof(id_len) + total_ids_length + sizeof(strategy) + sizeof(str_opt_len) + str_opt_len + sizeof(response_type);
       response_type = STOP_PUBLISH;
     } else {
+      /* else publish START_PUBLISH along with the lipisn identifier to be used */
       response_size = sizeof(no_ids) + ((unsigned int) no_ids) * sizeof(id_len) + total_ids_length + sizeof(strategy) + sizeof(str_opt_len) + str_opt_len + sizeof(response_type) + FID_LEN;
       response_type = START_PUBLISH;
     }
@@ -138,10 +147,11 @@ handle_match_pub_sub_request (char *match_request, unsigned char request_type, u
     }
 
     /*find the FID to the publisher*/
-    //TODO
-    //FIDToDestination = tm_igraph->calculateFID (tm_igraph->nodeID, destination_node);
-    response_id = resp_bin_prefix_id + destination;
-    ba->publish_data (response_id, IMPLICIT_RENDEZVOUS, (char *) lipsin_ptr->_data, FID_LEN, response, response_size);
+    lipsin_id_ptr lipsin_to_pub_ptr (new bitvector (FID_LEN * 8));
+    shortest_path (topology_manager_label, publisher, lipsin_to_pub_ptr);
+
+    response_id = resp_bin_prefix_id + publisher;
+    ba->publish_data (response_id, IMPLICIT_RENDEZVOUS, (char *) lipsin_to_pub_ptr->_data, FID_LEN, response, response_size);
 
     free (response);
   }
@@ -156,7 +166,6 @@ handle_scope_request (char *scope_request, unsigned char request_type, unsigned 
   set<string> subscribers, ids;
 
   string response_id;
-  boost::shared_ptr<bitvector> lipsin_to_dst;
 
   cout << "topology-manager: topology creation for published or unpublished scope" << endl;
 
@@ -212,11 +221,11 @@ handle_scope_request (char *scope_request, unsigned char request_type, unsigned 
     temp_response += sizeof(response_type);
 
     /* find the forwarding identifier to the subscriber */
+    lipsin_id_ptr lipsin_ptr (new bitvector (FID_LEN * 8));
+    shortest_path (topology_manager_label, subscriber, lipsin_ptr);
 
-    // TODO
-    //lipsin_to_dst = tm_igraph->calculateFID (tm_igraph->nodeID, subscriber);
     response_id = resp_bin_prefix_id + subscriber;
-    ba->publish_data (response_id, IMPLICIT_RENDEZVOUS, (char *) lipsin_to_dst->_data, FID_LEN, response, response_size);
+    ba->publish_data (response_id, IMPLICIT_RENDEZVOUS, (char *) lipsin_ptr->_data, FID_LEN, response, response_size);
 
     free (response);
   }
@@ -313,6 +322,13 @@ main (int argc, char* argv[])
   /* create boost graph using the network constructed above */
   create_graph (net_graph_ptr, net_ptr);
 
+  /* build forwarding base */
+  build_forwarding_base (net_graph_ptr);
+
+  if (verbose) {
+    /* print forwarding base */
+    print_forwarding_base (net_graph_ptr);
+  }
   /* add signal handler to allow for graceful exits */
   (void) signal (SIGINT, signal_handler);
   ba = boost::shared_ptr<blackadder> (blackadder::instance (!is_kernelspace));
@@ -321,6 +337,7 @@ main (int argc, char* argv[])
 
   pthread_create (&_event_listener, NULL, event_listener_loop, NULL);
   event_listener = &_event_listener;
+
   cout << "topology-manager: subscribing to scope " << req_prefix_id + req_id << endl;
   ba->subscribe_scope (req_bin_id, req_bin_prefix_id, IMPLICIT_RENDEZVOUS, NULL, 0);
 
