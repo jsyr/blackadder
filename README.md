@@ -7,7 +7,7 @@ A light version of blackadder ICN stack, including only core components that I w
 
 --Topology Manager
 
---deployment tool (+some code from Dimitris)
+--deployment tool
 
 --sample applications
 
