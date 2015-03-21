@@ -1,1 +1,0 @@
-libtool autoconf automake libigraph0 libigraph0-dev libconfig++8 libconfig++8-dev libssl-dev libtclap-dev
