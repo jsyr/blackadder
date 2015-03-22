@@ -90,7 +90,7 @@ handle_match_pub_sub_request (char *match_request, unsigned char request_type, u
     temp_buffer += (unsigned int) id_len;
     ids.insert (id);
     cout << chararray_to_hex (id) << " ";
-    total_ids_length += id_len * PURSUIT_ID_LEN;
+    total_ids_length += id.length ();
   }
   cout << endl;
 
@@ -135,7 +135,6 @@ handle_match_pub_sub_request (char *match_request, unsigned char request_type, u
     temp_response += sizeof(str_opt_len);
     memcpy (temp_response, str_opt, str_opt_len);
     temp_response += str_opt_len;
-    response_type = request_type;
     memcpy (temp_response, &response_type, sizeof(response_type));
     temp_response += sizeof(response_type);
 
@@ -147,8 +146,7 @@ handle_match_pub_sub_request (char *match_request, unsigned char request_type, u
     }
 
     /*find the FID to the publisher*/
-    lipsin_id_ptr lipsin_to_pub_ptr (new bitvector (FID_LEN * 8));
-    shortest_path (topology_manager_label, publisher, lipsin_to_pub_ptr);
+    lipsin_id_ptr lipsin_to_pub_ptr = shortest_path (topology_manager_label, publisher);
 
     response_id = resp_bin_prefix_id + publisher;
     ba->publish_data (response_id, IMPLICIT_RENDEZVOUS, (char *) lipsin_to_pub_ptr->_data, FID_LEN, response, response_size);
@@ -189,8 +187,8 @@ handle_scope_request (char *scope_request, unsigned char request_type, unsigned 
     string id (temp_buffer, ((unsigned int) id_len) * PURSUIT_ID_LEN);
     temp_buffer += (unsigned int) id_len;
     ids.insert (id);
+    total_ids_length += id.length ();
     cout << chararray_to_hex (id) << " ";
-    total_ids_length += id_len * PURSUIT_ID_LEN;
   }
   cout << endl;
 
@@ -221,8 +219,7 @@ handle_scope_request (char *scope_request, unsigned char request_type, unsigned 
     temp_response += sizeof(response_type);
 
     /* find the forwarding identifier to the subscriber */
-    lipsin_id_ptr lipsin_ptr (new bitvector (FID_LEN * 8));
-    shortest_path (topology_manager_label, subscriber, lipsin_ptr);
+    lipsin_id_ptr lipsin_ptr = shortest_path (topology_manager_label, subscriber);
 
     response_id = resp_bin_prefix_id + subscriber;
     ba->publish_data (response_id, IMPLICIT_RENDEZVOUS, (char *) lipsin_ptr->_data, FID_LEN, response, response_size);

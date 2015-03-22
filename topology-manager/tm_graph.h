@@ -147,6 +147,6 @@ print_forwarding_base (network_graph_ptr net_graph_ptr);
 void
 match_pubs_subs (std::set<std::string> &publishers, std::set<std::string> &subscribers, std::map<std::string, boost::shared_ptr<bitvector> > &result);
 
-void
-shortest_path (std::string &source, std::string &destination, boost::shared_ptr<bitvector> lipsin_ptr);
+boost::shared_ptr<bitvector>
+shortest_path (std::string &source, std::string &destination);
 #endif

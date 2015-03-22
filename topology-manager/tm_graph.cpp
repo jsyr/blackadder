@@ -335,21 +335,25 @@ match_pubs_subs (set<string> &publishers, set<string> &subscribers, map<string, 
     boost::shared_ptr<bitvector> best_lipsin_ptr;
     unsigned int no_hops = UINT_MAX;
 
+
     BOOST_FOREACH(string publisher, publishers) {
       forwarding_entry_ptr fw_ptr = (*(*fib.find (publisher)).second->find (subscriber)).second;
-      if(fw_ptr->no_hops < no_hops) {
+      if (fw_ptr->no_hops < no_hops) {
 	best_publisher = publisher;
 	best_lipsin_ptr = fw_ptr->lipsin_ptr;
 	no_hops = fw_ptr->no_hops;
       }
     }
-    (*(*result.find(best_publisher)).second) |= (*best_lipsin_ptr);
+    if (!(*result.find (best_publisher)).second) {
+      (*result.find (best_publisher)).second.reset (new bitvector (FID_LEN * 8));
+    }
+    (*(*result.find (best_publisher)).second) |= (*best_lipsin_ptr);
   }
 }
 
-void
-shortest_path (string &source, string &destination, boost::shared_ptr<bitvector> lipsin_ptr)
+boost::shared_ptr<bitvector>
+shortest_path (string &source, string &destination)
 {
   forwarding_entry_ptr fw_ptr = (*(*fib.find (source)).second->find (destination)).second;
-  lipsin_ptr = fw_ptr->lipsin_ptr;
+  return fw_ptr->lipsin_ptr;
 }
