@@ -13,3 +13,4 @@ config.status
 ?elements.mk
 ?package.cc
 elementmap-*.xml
+configure
