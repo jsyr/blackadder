@@ -13,29 +13,4 @@ Contributors
 ============
 
 Jimmy Kjällman          <jimmy.kjallman@nomadiclab.com>
-    Fixes, FreeBSD and Mac OS X porting, SWIG-based language bindings,
-    C binding, sample applications for Python, Ruby, Java and C.
-
-Dimitris Syrivelis      <jsyr@inf.uth.gr>
-    Deployment tool, PlanetLab support, Click elements.
-
-Christos Tsilopoulos    <tsilochr@aueb.gr>
-    Java bindings and Java-based voice application.
-
-Charilaos Stais         <stais@aueb.gr>
-    Java-based voice application.
-
-Ben Tagger              <ben.tagger@cl.cam.ac.uk>
-    Video streaming GUI demo application.
-
-Mays Al-Naday           <mfhaln@essex.ac.uk>
-    Multi-layer deployment.
-
-Yi-Ching Liao           <yliao@cs.helsinki.fi>
-    PLA support.
-
-Dmitrij Lagutin         <dmitrij.lagutin@hiit.fi>
-    PLA support.
-
-Nikos Fotiou            <fotiou@aueb.gr>
-    Access control implementation.
+    Fixes, FreeBSD and Mac OS X porting 
