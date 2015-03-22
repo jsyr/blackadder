@@ -44,7 +44,7 @@ int main(int argc, char* argv[]) {
     string bin_id = hex_to_chararray(id);
     string bin_prefix_id = hex_to_chararray(prefix_id);
     cout << "Subscribing to Scope " << prefix_id << id << endl;
-    ba->subscribe_scope(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
+    ba->subscribe_scope(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
     while (true) {
         event ev;
         ba->get_event(ev);
@@ -54,7 +54,7 @@ int main(int argc, char* argv[]) {
                 bin_id = ev.id.substr(ev.id.length() - PURSUIT_ID_LEN, PURSUIT_ID_LEN);
                 bin_prefix_id = ev.id.substr(0, ev.id.length() - PURSUIT_ID_LEN);
                 cout << "Subscribing to Scope " << chararray_to_hex(ev.id) << endl;
-                ba->subscribe_scope(bin_id, bin_prefix_id, NODE_LOCAL, NULL, 0);
+                ba->subscribe_scope(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
                 break;
             case SCOPE_UNPUBLISHED:
                 cout << "SCOPE_UNPUBLISHED: " << chararray_to_hex(ev.id) << endl;
