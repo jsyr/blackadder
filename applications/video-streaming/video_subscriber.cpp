@@ -16,9 +16,9 @@
 #include <openssl/sha.h>
 #include <spawn.h>
 #include <arpa/inet.h>
-#include <blackadder.hpp>
+#include <blackadder.h>
 
-Blackadder *ba;
+blackadder *ba;
 
 string video_stream;
 
@@ -38,7 +38,6 @@ void *vlc_thread_loop(void *arg) {
     cout << "random_port " << str_random_port << endl;
     string command = string("/usr/bin/vlc rtp://@:") + string(str_random_port);
     system(command.c_str());
-    ba->disconnect();
     delete ba;
     exit(0);
 }
@@ -48,7 +47,7 @@ void *event_listener_loop(void *arg) {
     struct sockaddr_in server;
     char str_random_port[30];
     pthread_t vlc_thread;
-    Blackadder *ba = (Blackadder *) arg;
+    blackadder *ba = (blackadder *) arg;
     /*create a random port*/
     int random_port = (rand() % 10000 + 3000);
     snprintf(str_random_port, sizeof (str_random_port), "%d", random_port);
@@ -63,8 +62,8 @@ void *event_listener_loop(void *arg) {
         perror("socket");
     }
     while (true) {
-        Event ev;
-        ba->getEvent(ev);
+        event ev;
+        ba->get_event(ev);
         if (ev.type == PUBLISHED_DATA) {
             sendto(sock, ev.data, ev.data_len, 0, (struct sockaddr *) &server, sizeof (server));
         } else {
@@ -75,7 +74,6 @@ void *event_listener_loop(void *arg) {
 
 void sigfun(int sig) {
     (void) signal(SIGINT, SIG_DFL);
-    ba->disconnect();
     delete ba;
     exit(0);
 }
@@ -86,19 +84,19 @@ int main(int argc, char* argv[]) {
     string prefix_id;
     string bin_id;
     string bin_prefix_id;
-    Event ev;
+    event ev;
     pthread_t event_listener;
     (void) signal(SIGINT, sigfun);
     if (argc > 1) {
         int user_or_kernel = atoi(argv[1]);
         if (user_or_kernel == 0) {
-            ba = Blackadder::Instance(true);
+            ba = blackadder::instance(true);
         } else {
-            ba = Blackadder::Instance(false);
+            ba = blackadder::instance(false);
         }
     } else {
         /*By Default I assume blackadder is running in user space*/
-        ba = Blackadder::Instance(true);
+        ba = blackadder::instance(true);
     }
     cout << "subscribing to the video catalogue information item" << endl;
     id = "0000000000000000";
@@ -106,7 +104,7 @@ int main(int argc, char* argv[]) {
     bin_id = hex_to_chararray(id);
     bin_prefix_id = hex_to_chararray(prefix_id);
     ba->subscribe_info(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
-    ba->getEvent(ev);
+    ba->get_event(ev);
     if (ev.type == PUBLISHED_DATA) {
         if (ev.id.compare(bin_prefix_id + bin_id) == 0) {
             cout << "received Video Catalogue" << endl;
@@ -134,10 +132,8 @@ int main(int argc, char* argv[]) {
     }
     pthread_create(&event_listener, NULL, event_listener_loop, (void *) ba);
     pthread_join(event_listener, NULL);
-    cout << "disconnecting" << endl;
     sleep(1);
 error:
-    ba->disconnect();
     delete ba;
     return 0;
 }

@@ -23,7 +23,7 @@
 #include <fstream>
 #include <climits>
 
-#include "soliton.hpp"
+#include "soliton.h"
 
 using namespace std;
 

@@ -17,9 +17,9 @@
 #include <map>
 #include <spawn.h>
 #include <arpa/inet.h>
-#include <blackadder.hpp>
+#include <blackadder.h>
 
-Blackadder *ba;
+blackadder *ba;
 
 string video_catalogue;
 int port_sequence_number = 1500;
@@ -39,7 +39,7 @@ public:
     StreamingInfo() {
     };
     /*members*/
-    Blackadder *ba;
+    blackadder *ba;
     int sock;
     struct sockaddr_in server;
     int port;
@@ -82,10 +82,10 @@ void *udp_socket_listener(void *arg) {
 
 void *event_listener_loop(void *arg) {
     string catalogue_id = hex_to_chararray("00000000000000000000000000000000");
-    Blackadder *ba = (Blackadder *) arg;
+    blackadder *ba = (blackadder *) arg;
     while (true) {
-        Event ev;
-        ba->getEvent(ev);
+        event ev;
+        ba->get_event(ev);
         if (ev.type == START_PUBLISH) {
             if (ev.id.compare(catalogue_id) == 0) {
                 /*publish once the catalogue data*/
@@ -137,7 +137,6 @@ void *event_listener_loop(void *arg) {
 
 void sigfun(int sig) {
     (void) signal(SIGINT, SIG_DFL);
-    ba->disconnect();
     delete ba;
     exit(0);
 }
@@ -157,13 +156,13 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         int user_or_kernel = atoi(argv[1]);
         if (user_or_kernel == 0) {
-            ba = Blackadder::Instance(true);
+            ba = blackadder::instance(true);
         } else {
-            ba = Blackadder::Instance(false);
+            ba = blackadder::instance(false);
         }
     } else {
         /*By Default I assume blackadder is running in user space*/
-        ba = Blackadder::Instance(true);
+        ba = blackadder::instance(true);
     }
 
     id = "0000000000000000";
@@ -206,9 +205,7 @@ int main(int argc, char* argv[]) {
     /*start the event listener*/
     pthread_create(&event_listener, NULL, event_listener_loop, (void *) ba);
     pthread_join(event_listener, NULL);
-    cout << "disconnecting" << endl;
     sleep(1);
-    ba->disconnect();
     delete ba;
     return 0;
 }

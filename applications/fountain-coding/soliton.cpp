@@ -11,7 +11,7 @@
  *
  * See LICENSE and COPYING for more details.
  */
-#include "soliton.hpp"
+#include "soliton.h"
 
 IdealSolitonDistribution::IdealSolitonDistribution(unsigned int _dataSize, unsigned short _symbolSize, unsigned int _numberOfInputSymbols) {
     dataSize = _dataSize;

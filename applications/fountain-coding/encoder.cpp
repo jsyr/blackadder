@@ -11,7 +11,7 @@
  *
  * See LICENSE and COPYING for more details.
  */
-#include "encoder.hpp"
+#include "encoder.h"
 
 Encoder::Encoder() : seed_generator(time(NULL)) {
 

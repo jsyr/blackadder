@@ -18,7 +18,8 @@
 #include <iostream>
 #include <iomanip>
 #include <math.h>
-#include "prng.hpp"
+
+#include "prng.h"
 
 using namespace std;
 

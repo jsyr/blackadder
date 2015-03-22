@@ -15,13 +15,13 @@
 #include <sys/time.h>
 #include <fstream>
 #include <signal.h>
-#include <blackadder.hpp>
+#include <blackadder.h>
 
-#include "decoder.hpp"
+#include "decoder.h"
 
 using namespace std;
 
-Blackadder *ba;
+blackadder *ba;
 Decoder decoder;
 pthread_t event_listener;
 pthread_mutex_t event_listener_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -43,15 +43,14 @@ unsigned int counter = 0;
 
 void sigfun(int /*sig*/) {
     (void) signal(SIGINT, SIG_DFL);
-    ba->disconnect();
     delete ba;
     exit(0);
 }
 
 void *event_listener_loop(void *arg) {
     bool decodingOver;
-    Event *ev;
-    Blackadder *ba = (Blackadder *) arg;
+    event *ev;
+    blackadder *ba = (blackadder *) arg;
     DecodingState *ds;
     string information_identifier;
     //string algorithmic_identifier;
@@ -60,8 +59,8 @@ void *event_listener_loop(void *arg) {
     //char *symbol;
     //cout << "event_listener_loop started " << endl;
     while (true) {
-        ev = new Event();
-        ba->getEvent(*ev);
+        ev = new event();
+        ba->get_event(*ev);
         if (ev->type == PUBLISHED_DATA) {
             counter++;
             memcpy(&seed, ev->id.c_str() + ev->id.length() - PURSUIT_ID_LEN, sizeof (seed));
@@ -121,13 +120,13 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         int user_or_kernel = atoi(argv[1]);
         if (user_or_kernel == 0) {
-            ba = Blackadder::Instance(true);
+            ba = blackadder::instance(true);
         } else {
-            ba = Blackadder::Instance(false);
+            ba = blackadder::instance(false);
         }
     } else {
         /*By Default I assume blackadder is running in user space*/
-        ba = Blackadder::Instance(true);
+        ba = blackadder::instance(true);
     }
     //cout << "Process ID: " << getpid() << endl;
     string id = string(PURSUIT_ID_LEN * 2, '1'); // "1111111111111111"
@@ -157,7 +156,6 @@ int main(int argc, char* argv[]) {
 
     pthread_join(event_listener, NULL);
     sleep(1);
-    ba->disconnect();
     delete ba;
     return 0;
 }

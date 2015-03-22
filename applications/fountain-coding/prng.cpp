@@ -11,7 +11,7 @@
  *
  * See LICENSE and COPYING for more details.
  */
-#include "prng.hpp"
+#include "prng.h"
 
 CLICK_DECLS
 

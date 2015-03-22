@@ -25,11 +25,11 @@
 #include <fstream>
 #include <climits>
 
-#include "soliton.hpp"
+#include "soliton.h"
 
 using namespace std;
 
-class Event;
+class event;
 class DecodingState;
 class EncodedSymbol;
 
@@ -39,7 +39,7 @@ public:
     ~Decoder();
     DecodingState *getState(string ID);
     DecodingState *initState(string _ID, unsigned int _dataSize, unsigned short _symbolSize, bool _isMemory);
-    bool decodeNext(DecodingState *ds, Event *ev, int seed);
+    bool decodeNext(DecodingState *ds, event *ev, int seed);
     set<unsigned int> *getNeighbours(DecodingState *ds, unsigned int degree);
     unsigned int getNeighbour(DecodingState *ds);
     void indexEncodedSymbol(DecodingState *ds, EncodedSymbol *es);
@@ -79,7 +79,7 @@ public:
     map<unsigned int, list<EncodedSymbol *> *> neighbourIndex;
     /**this is an array of all input symbols. If an input symbol is not decoded yet, the position in the array will be NULL
      */
-    Event **inputSymbols;
+    event **inputSymbols;
     vector<unsigned int> degree_statistics;
     /**This is the file where the decoded content will be stored - its name will be ID
      */
@@ -94,9 +94,9 @@ public:
 
 class EncodedSymbol {
 public:
-    EncodedSymbol(Event *ev, unsigned int _degree, set<unsigned int> *_neighbours);
+    EncodedSymbol(event *ev, unsigned int _degree, set<unsigned int> *_neighbours);
     ~EncodedSymbol();
-    Event *_ev;
+    event *_ev;
     unsigned int degree;
     set<unsigned int> *neighbours;
 };

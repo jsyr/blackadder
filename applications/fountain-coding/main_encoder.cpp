@@ -13,13 +13,13 @@
  */
 #include <signal.h>
 #include <map>
-#include <blackadder.hpp>
+#include <blackadder.h>
 
-#include "encoder.hpp"
+#include "encoder.h"
 
 using namespace std;
 
-Blackadder *ba;
+blackadder *ba;
 pthread_t event_listener;
 pthread_mutex_t event_listener_mutex = PTHREAD_MUTEX_INITIALIZER;
 bool event_listener_should_exit = false;
@@ -38,7 +38,6 @@ void sigfun(int /*sig*/) {
     event_listener_should_exit = true;
     pthread_mutex_unlock(&event_listener_mutex);
     pthread_cancel(event_listener);
-    ba->disconnect();
     delete ba;
 }
 
@@ -69,12 +68,12 @@ void *fountain_publisher(void *arg) {
 }
 
 void *event_listener_loop(void *arg) {
-    Blackadder *ba = (Blackadder *) arg;
+    blackadder *ba = (blackadder *) arg;
     map<string, pthread_t *>::iterator digital_fountain_threads_iterator;
     pthread_t *fountain_publisher_thread;
     while (true) {
-        Event ev;
-        ba->getEvent(ev);
+        event ev;
+        ba->get_event(ev);
         switch (ev.type) {
             case START_PUBLISH:
                 cout << "START PUBLISH: " << chararray_to_hex(ev.id) << endl;
@@ -139,13 +138,13 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         int user_or_kernel = atoi(argv[1]);
         if (user_or_kernel == 0) {
-            ba = Blackadder::Instance(true);
+            ba = blackadder::instance(true);
         } else {
-            ba = Blackadder::Instance(false);
+            ba = blackadder::instance(false);
         }
     } else {
         /*By Default I assume blackadder is running in user space*/
-        ba = Blackadder::Instance(true);
+        ba = blackadder::instance(true);
     }
     pthread_create(&event_listener, NULL, event_listener_loop, (void *) ba);
     string id = string(PURSUIT_ID_LEN * 2, '1'); // "1111111111111111"
@@ -170,7 +169,6 @@ int main(int argc, char* argv[]) {
     ba->publish_info(bin_id, bin_prefix_id, DOMAIN_LOCAL, NULL, 0);
 
     pthread_join(event_listener, NULL);
-    cout << "disconnecting" << endl;
     en.removeState(full_bin_id);
     free(data);
     return 0;

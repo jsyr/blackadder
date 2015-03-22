@@ -11,10 +11,10 @@
  *
  * See LICENSE and COPYING for more details.
  */
-#include "decoder.hpp"
+#include "decoder.h"
 
 #include <stdio.h>
-#include <blackadder.hpp>
+#include <blackadder.h>
 
 Decoder::Decoder() {
 }
@@ -38,7 +38,7 @@ DecodingState *Decoder::initState(string _ID, unsigned int _dataSize, unsigned s
     return ds;
 }
 
-bool Decoder::decodeNext(DecodingState *ds, Event *ev, int seed) {
+bool Decoder::decodeNext(DecodingState *ds, event *ev, int seed) {
     EncodedSymbol *es;
     int degree;
     long *test1;
@@ -271,7 +271,7 @@ DecodingState::DecodingState(string _ID, unsigned int _dataSize, unsigned short 
         sizeOfLastInputSymbol = _dataSize % _symbolSize;
     }
     if (isMemory) {
-        inputSymbols = (Event **) calloc(sizeof (Event *), numberOfInputSymbols);
+        inputSymbols = (event **) calloc(sizeof (event *), numberOfInputSymbols);
     } else {
         /*XXX not ready yet*/
         output.open(ID.c_str(), ios::out | ios::binary);
@@ -303,7 +303,7 @@ unsigned int DecodingState::getMedianDegree() {
     return degree_statistics[degree_statistics.size()/2];
 }
 
-EncodedSymbol::EncodedSymbol(Event *ev, unsigned int _degree, set<unsigned int> *_neighbours) {
+EncodedSymbol::EncodedSymbol(event *ev, unsigned int _degree, set<unsigned int> *_neighbours) {
     _ev = ev;
     degree = _degree;
     neighbours = _neighbours;
