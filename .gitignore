@@ -39,3 +39,5 @@ kversion.c
 *uelem.conf
 *umain.cc
 Kbuild
+
+build/*
